@@ -117,7 +117,7 @@ Each competitor has one or two of these. Reprise ships all five on day one.
 | Images and links pasted into agents | Attachments copied into the library; absolute paths and URLs appended on use |
 | Rich-text mangling (smart quotes) | Plain-text storage, smart substitutions off, prompt-aware highlighting (XML tags) |
 | Fear of data loss (extension reviews) | Autosave, 50-version history, WAL, Markdown export |
-| Taste-driven users; "must not feel vibe-coded or like a notes app" | Three complete designs (Edition, Machined, Quiet), each with light, dark and glass looks, native controls throughout (see section 6) |
+| Taste-driven users; "must not feel vibe-coded or like a notes app" | Three structurally different designs (Console, Board, Studio), dark by default, one Copy action (see section 6) |
 
 ### Deliberately *not* built (yet)
 - **Cloud accounts / sync service.** Conflicts with local-first; `REPRISE_HOME` on an iCloud folder covers the simple case.
@@ -144,12 +144,25 @@ The tells that recur across those sources, and which v0.1 had:
 | Costume (terminal, "hacker" mono) | Ink look | Mono only for placeholders and commands, unless the user picks it |
 | Sparse, slow layouts that look like a landing page | Big empty glass | A dense margin of real apparatus beside a readable measure |
 
-### The decision
-The main window is for writing and refining prompts, so it should feel like a page, not a feed. The chosen direction is the **Annotated Edition**: the prompt is set on a book measure, and everything about it (blanks, includes, files, agent commands, record) sits in a margin, the way a critical edition keeps notes beside the text. The other two designs keep that structure and change only the voice:
+### Round one: one structure, three palettes (rejected)
+The first redesign kept the three-column layout and set it like an annotated book page (Edition), with two alternates that changed only type and color (Machined, Quiet). The user's verdict: still "the usual notes app", the actions were unclear ("Use", two copy buttons and "Copy filled" all copied), and New Prompt was hard to find. The lesson: **the notes-app tell is the structure**, not the palette. A sidebar, a list and an editor read as Notes whatever the typeface.
 
-- **Edition**: serif page, small-caps captions, vermilion rubric blanks keyed A B C, square corners, a detent rule under the title.
-- **Machined**: grotesk, numbered orange key caps, orange only on the keys and the two actions (Use, Copy filled), 6pt radius. An instrument, not a terminal.
-- **Quiet**: light 34pt titles, wide-tracked captions, ink-blue italic roman keys, extra line height. A gallery wall.
+### Round two: three structures
+References for structure, not style:
 
-Each ships as its own build so they can be compared side by side. Tokens and rules are in [`DESIGN.md`](../DESIGN.md).
+- **Launchers** ([Raycast's design principles: fast, simple, delightful](https://raycast.com/blog/a-fresh-look-and-feel)): one input owns the window, results are keyboard-first, and an action bar teaches shortcuts by showing them. Raycast's write-up also notes the team built custom components because stock ones weren't keyboard-first ([technical deep dive](https://www.raycast.com/blog/a-technical-deep-dive-into-the-new-raycast)).
+- **Boards** ([Linear, "A calmer interface"](https://linear.app/now/behind-the-latest-design-refresh)): the working surface stays in focus and navigation recedes; dense, monochrome, low-contrast structure.
+- **Editors with inspectors and palettes** (Zed, Xcode, and the command-palette pattern surveyed in [Retool's "Designing the command palette"](https://retool.com/blog/designing-the-command-palette)): tabs for open work, ⌘P to open anything, an inspector for properties.
+- **Monochrome dark systems** ([Vercel Geist](https://vercel.com/geist/terminal)): near-black ground, three grays for primary, secondary and quiet text; accents only for meaning.
 
+Decisions:
+
+| Problem | Fix |
+|---|---|
+| Notes-app skeleton | Console has no sidebar; Board has no list; Studio has no persistent list |
+| Use / Copy Source / Copy filled confusion | One action, **Copy Prompt** (⌘↩), with "What gets copied" shown above it. Copy Template Source moved into the ⋯ menu. Quick Panel says "Paste" or "Copy", never both |
+| New Prompt buried at the bottom of the sidebar | A filled **New Prompt** button at the top right of every design; New Project and New Space where projects and spaces are shown |
+| Too many colors | One signal color per design; Board's primary is ink; project colors are small keys only |
+| Light-first | Theme setting in every design, **Dark by default** |
+
+The three designs, their tokens and rules are in [`DESIGN.md`](../DESIGN.md).

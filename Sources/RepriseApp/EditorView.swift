@@ -4,58 +4,38 @@ import QuickLook
 import RepriseCore
 import UniformTypeIdentifiers
 
-/// The page. The prompt is set at a book measure in New York; its machinery
-/// (blanks, includes, files, publishing, record) hangs in a ruled margin beside it.
-struct EditorView: View {
+/// The page: the prompt's title, its apparatus line, and the TextKit 2 editor on a reading measure.
+/// Every design embeds it; none of them puts anything else on the page.
+struct PageEditor: View {
     @Environment(AppModel.self) private var model
-    @LookSetting private var look
+    let prompt: Prompt
+    var inset: CGFloat = 44
+    var topPadding: CGFloat = 26
     @AppStorage("editorFontChoice") private var fontChoice = ""
     @AppStorage("editorSizeChoice") private var sizeChoice: Double = 0
     private var editorFont: EditorFont { EditorFont.resolve(fontChoice) }
     private var editorSize: Double { sizeChoice > 0 ? sizeChoice : Folio.style.editorSize }
 
-    static let inset: CGFloat = 44
-
     var body: some View {
-        Group {
-            if let p = model.current {
-                GeometryReader { geo in
-                    let showMargin = model.showMargin && geo.size.width >= 640
-                    HStack(spacing: 0) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            PageHeader(prompt: p, measure: measure)
-                                .padding(.horizontal, Self.inset)
-                                .padding(.top, 22)
-                                .padding(.bottom, 14)
-                            MarkdownEditor(
-                                promptID: p.id,
-                                initialText: p.body,
-                                font: editorFont,
-                                fontSize: editorSize,
-                                inset: Self.inset,
-                                measure: measure,
-                                onChange: { model.bodyDidChange(p.id, $0) },
-                                onPasteImage: { data, ext in model.attach(imageData: data, ext: ext) },
-                                onDropFiles: { model.attach(files: $0) }
-                            )
-                            .id(p.id)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if showMargin {
-                            Hairline(vertical: true)
-                            MarginView(prompt: p)
-                                .frame(width: 268)
-                                .transition(.move(edge: .trailing).combined(with: .opacity))
-                        }
-                    }
-                }
-                .toolbar { EditorToolbar(prompt: p) }
-            } else {
-                EmptyPage()
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            PageHeader(prompt: prompt, measure: measure)
+                .padding(.horizontal, inset)
+                .padding(.top, topPadding)
+                .padding(.bottom, 14)
+            MarkdownEditor(
+                promptID: prompt.id,
+                initialText: prompt.body,
+                font: editorFont,
+                fontSize: editorSize,
+                inset: inset,
+                measure: measure,
+                onChange: { model.bodyDidChange(prompt.id, $0) },
+                onPasteImage: { data, ext in model.attach(imageData: data, ext: ext) },
+                onDropFiles: { model.attach(files: $0) }
+            )
+            .id(prompt.id)
         }
-        .background(Ground(look: look).ignoresSafeArea())
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var measure: CGFloat { CGFloat(editorSize) * (editorFont == .mono ? 50 : 44) }
@@ -75,7 +55,7 @@ struct EmptyPage: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(EditorView.inset)
+        .padding(44)
         .padding(.top, 40)
     }
 
@@ -214,60 +194,21 @@ struct StatsLine: View {
 
 // MARK: Toolbar
 
-struct EditorToolbar: ToolbarContent {
-    @Environment(AppModel.self) private var model
-    let prompt: Prompt
+// MARK: Details
 
-    var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button { model.copyRaw(prompt.id) } label: { Label("Copy Source", systemImage: "doc.on.doc") }
-                .help("Copy the prompt as written, blanks included (⇧⌘C)")
-            Button { model.togglePin(prompt.id) } label: {
-                Label(prompt.pinned ? "Unpin" : "Pin", systemImage: prompt.pinned ? "pin.fill" : "pin")
-            }
-            .help(prompt.pinned ? "Unpin (⇧⌘P)" : "Pin to the top of the Quick Panel (⇧⌘P)")
-            Button {
-                model.flushSave(); try? model.store.snapshot(prompt.id); model.historyTarget = prompt
-            } label: { Label("History", systemImage: "clock.arrow.circlepath") }
-                .help("Earlier versions")
-            Button { withAnimation(.easeOut(duration: 0.2)) { model.showMargin.toggle() } } label: {
-                Label("Margin", systemImage: "sidebar.right")
-            }
-            .help("Show or hide the margin (⌥⌘0)")
-        }
-        ToolbarSpacer(.fixed, placement: .primaryAction)
-        ToolbarItem(placement: .primaryAction) {
-            Button { model.use(prompt.id) } label: {
-                Label("Use", systemImage: "play.fill").labelStyle(.titleAndIcon)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(Folio.fill)
-            .help(model.blanks.isEmpty ? "Copy this prompt (⌘↩)" : "Copy with the margin's blanks filled in (⌘↩)")
-        }
-    }
-}
-
-// MARK: Margin
-
-struct MarginView: View {
+/// Everything about a prompt except its text and its blanks: includes, files, agent commands, record.
+struct DetailsView: View {
     @Environment(AppModel.self) private var model
     let prompt: Prompt
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 26) {
-                if !model.blanks.isEmpty { BlanksSection(prompt: prompt) }
-                if !model.includes.isEmpty { IncludesSection(names: model.includes) }
-                FilesSection(attachments: model.attachments)
-                PublishSection(prompt: prompt)
-                RecordSection(prompt: prompt)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 26)
-            .padding(.bottom, 30)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 26) {
+            if !model.includes.isEmpty { IncludesSection(names: model.includes) }
+            FilesSection(attachments: model.attachments)
+            PublishSection(prompt: prompt)
+            RecordSection(prompt: prompt)
         }
-        .scrollIndicators(.never)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -288,63 +229,6 @@ struct MarginHeading<Trailing: View>: View {
 
 extension MarginHeading where Trailing == EmptyView {
     init(title: String) { self.title = title; self.trailing = EmptyView() }
-}
-
-/// The signature: every blank carries a rubric key, matching the rubric placeholders in the text.
-struct BlanksSection: View {
-    @Environment(AppModel.self) private var model
-    let prompt: Prompt
-    @FocusState private var focused: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            MarginHeading(title: "Blanks") { Caps("\(model.blanks.count)", size: 10.5) }
-            ForEach(Array(model.blanks.enumerated()), id: \.element.id) { i, v in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    BlankKey(index: i)
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(v.name)
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(Folio.slate)
-                        field(v)
-                    }
-                }
-            }
-            Button { model.use(prompt.id) } label: {
-                PrimaryLabel(title: "Copy filled", shortcut: "⌘↩")
-            }
-            .buttonStyle(PressStyle())
-            .padding(.top, 4)
-        }
-    }
-
-    @ViewBuilder
-    private func field(_ v: Template.Variable) -> some View {
-        if v.isChoice {
-            Picker("", selection: Binding(get: { model.fillValues[v.name] ?? v.defaultValue },
-                                         set: { model.fillValues[v.name] = $0 })) {
-                ForEach(v.options, id: \.self) { Text($0).tag($0) }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .controlSize(.small)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            VStack(spacing: 3) {
-                TextField(v.defaultValue.isEmpty ? "Fill in" : v.defaultValue,
-                          text: Binding(get: { model.fillValues[v.name] ?? "" }, set: { model.fillValues[v.name] = $0 }),
-                          axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(.text(13.5))
-                    .foregroundStyle(Folio.ink)
-                    .lineLimit(1...6)
-                    .focused($focused, equals: v.name)
-                Rectangle()
-                    .fill(focused == v.name ? Folio.rubric : Folio.rule)
-                    .frame(height: focused == v.name ? 1 : Hairline.px)
-            }
-        }
-    }
 }
 
 struct PressStyle: ButtonStyle {

@@ -17,12 +17,13 @@ struct Icon: View {
             // macOS 26 icon grid: 824pt rounded rect inside a 1024 canvas.
             RoundedRectangle(cornerRadius: 186, style: .continuous)
                 .fill(ground)
+                .overlay(RoundedRectangle(cornerRadius: 186, style: .continuous).strokeBorder(Color.white.opacity(0.06), lineWidth: 3))
                 .frame(width: 824, height: 824)
                 .shadow(color: .black.opacity(0.28), radius: 24, y: 14)
             switch world {
-            case "Machined": machined
-            case "Quiet": quiet
-            default: edition
+            case "Board": board
+            case "Studio": studio
+            default: console
             }
         }
         .frame(width: 1024, height: 1024)
@@ -30,38 +31,45 @@ struct Icon: View {
 
     var ground: Color {
         switch world {
-        case "Machined": return hex("#E4E4E1")
-        case "Quiet": return hex("#E9E7E2")
-        default: return hex("#F3F1EB")
+        case "Board": return hex("#0E0F10")
+        case "Studio": return hex("#181715")
+        default: return hex("#121214")
         }
     }
 
-    /// Bone paper, iron ink, rubric dots, inside the page's ruled frame.
-    var edition: some View {
+    /// Console: the sign set into a search field, coral dots on graphite.
+    var console: some View {
         ZStack {
-            Rectangle().strokeBorder(hex("#1B1A18").opacity(0.22), lineWidth: 4).frame(width: 620, height: 620)
-            sign(ink: hex("#1B1A18"), dot: hex("#B8321F"), scale: 1, radius: 0)
+            RoundedRectangle(cornerRadius: 120, style: .continuous)
+                .fill(hex("#1C1C1F"))
+                .frame(width: 600, height: 600)
+            RoundedRectangle(cornerRadius: 120, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.09), lineWidth: 4)
+                .frame(width: 600, height: 600)
+            sign(ink: hex("#EDEDEF"), dot: hex("#FF6A45"), scale: 0.8, radius: 12)
         }
     }
 
-    /// Aluminum body with a graphite key cap set into it; signal-orange dots.
-    var machined: some View {
+    /// Board: the bars become tiles on three faint columns; mint dots.
+    var board: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 96, style: .continuous)
-                .fill(hex("#1E1E20"))
-                .frame(width: 560, height: 560)
-                .shadow(color: .black.opacity(0.35), radius: 14, y: 10)
-            RoundedRectangle(cornerRadius: 96, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 3)
-                .frame(width: 560, height: 560)
-            sign(ink: hex("#EEEEEB"), dot: hex("#FF5A1F"), scale: 0.78, radius: 10)
+            HStack(spacing: 34) {
+                ForEach(0..<3) { _ in
+                    RoundedRectangle(cornerRadius: 40, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 4)
+                        .frame(width: 176, height: 560)
+                }
+            }
+            sign(ink: hex("#F2F3F3"), dot: hex("#5EE0A8"), scale: 0.86, radius: 26)
         }
     }
 
-    /// A record sleeve: a small light mark low on a warm gray board, one ink-blue pair of dots.
-    var quiet: some View {
-        sign(ink: hex("#2A2A28"), dot: hex("#2D5A8A"), scale: 0.62, radius: 0, light: true)
-            .offset(x: -96, y: 110)
+    /// Studio: bone ink on iron inside the page's ruled frame, vermilion dots.
+    var studio: some View {
+        ZStack {
+            Rectangle().strokeBorder(hex("#ECE9E1").opacity(0.18), lineWidth: 4).frame(width: 620, height: 620)
+            sign(ink: hex("#ECE9E1"), dot: hex("#EF6A52"), scale: 1, radius: 0)
+        }
     }
 
     func sign(ink: Color, dot: Color, scale: CGFloat, radius: CGFloat, light: Bool = false) -> some View {
@@ -81,7 +89,7 @@ let out = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arg
 try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
 
 MainActor.assumeIsolated {
-    let r = ImageRenderer(content: Icon(world: CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "Edition"))
+    let r = ImageRenderer(content: Icon(world: CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "Console"))
     r.scale = 1
     guard let cg = r.cgImage else { fatalError("render failed") }
     let rep = NSBitmapImageRep(cgImage: cg)

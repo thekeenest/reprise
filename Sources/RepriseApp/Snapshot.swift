@@ -10,11 +10,13 @@ enum Snapshot {
         ProcessInfo.processInfo.environment["REPRISE_SNAPSHOT"].map { URL(fileURLWithPath: $0, isDirectory: true) }
     }
 
-    /// REPRISE_DEMO=panel|fill|harvest opens that surface on launch (for recording demos).
+    /// REPRISE_DEMO=panel|fill|harvest|run|edit|palette|tabs opens that surface on launch (for recording demos).
     static func demoIfRequested() {
         if let title = ProcessInfo.processInfo.environment["REPRISE_SELECT"],
            let p = try? AppModel.shared.store.prompt(named: title) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { AppModel.shared.selectedID = p.id }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                if World.current == .studio { AppModel.shared.open(p.id) } else { AppModel.shared.selectedID = p.id }
+            }
         }
         guard let demo = ProcessInfo.processInfo.environment["REPRISE_DEMO"] else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -25,6 +27,16 @@ enum Snapshot {
                 QuickPanelController.shared.show()
             case "fill": if let id = model.selectedID { model.use(id) }
             case "harvest": model.showHarvest = true
+            case "run": model.showRun = true
+            case "new": model.newPrompt()
+            case "settings": model.openSettingsToken += 1
+            case "edit": model.editing = true
+            case "palette": model.showPalette = true
+            case "tabs":
+                for t in ["Staff Engineer", "Hunt a bug", "Ship a feature"] {
+                    if let p = try? model.store.prompt(named: t) { model.open(p.id) }
+                }
+                if let p = try? model.store.prompt(named: ProcessInfo.processInfo.environment["REPRISE_SELECT"] ?? "") { model.selectedID = p.id }
             default: break
             }
         }
@@ -34,19 +46,19 @@ enum Snapshot {
         demoIfRequested()
         guard let out = outDir else { return }
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
-        let original = UserDefaults.standard.string(forKey: "look")
+        let original = UserDefaults.standard.string(forKey: "theme")
         var steps: [(String, () -> Void)] = []
         for look in Look.allCases {
-            steps.append(("main-\(look.rawValue.lowercased())", { UserDefaults.standard.set(look.rawValue, forKey: "look") }))
+            steps.append(("main-\(look.rawValue.lowercased())", { UserDefaults.standard.set(look.rawValue, forKey: "theme") }))
         }
         steps.append(("quick-panel", {
-            UserDefaults.standard.set(Look.bone.rawValue, forKey: "look")
+            UserDefaults.standard.set(Look.dark.rawValue, forKey: "theme")
             QuickPanelController.shared.show()
         }))
 
         func run(_ i: Int) {
             guard i < steps.count else {
-                if let original { UserDefaults.standard.set(original, forKey: "look") }
+                if let original { UserDefaults.standard.set(original, forKey: "theme") }
                 NSApp.terminate(nil)
                 return
             }

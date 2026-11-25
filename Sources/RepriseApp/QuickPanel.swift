@@ -114,10 +114,7 @@ struct QuickPanelView: View {
         }
         .frame(width: 760, height: 470)
         .foregroundStyle(Folio.ink)
-        .background {
-            if look != .vellum { Folio.paper }
-        }
-        .modifier(PanelMaterial(glass: look == .vellum))
+        .background(Folio.paper)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
         .tint(Folio.ink)
@@ -218,8 +215,9 @@ struct QuickPanelView: View {
 
     private var footer: some View {
         HStack(spacing: 16) {
-            hint("↩", filling == nil ? (Prefs.autoPaste && Paster.canAutoPaste ? "Paste" : "Copy") : "Next / Use")
-            hint("⌘↩", "Copy only")
+            let pastes = Prefs.autoPaste && Paster.canAutoPaste
+            hint("↩", filling == nil ? (pastes ? "Paste" : "Copy") : "Next blank")
+            if pastes { hint("⌘↩", "Copy without pasting") }
             hint("⌘O", "Open in Reprise")
             hint("esc", filling == nil ? "Close" : "Back")
             Spacer()
@@ -365,13 +363,5 @@ struct QuickRow: View {
         .padding(.vertical, 8)
         .background { SelectionBackground(selected: selected, active: true, hovering: false) }
         .contentShape(Rectangle())
-    }
-}
-
-struct PanelMaterial: ViewModifier {
-    var glass: Bool
-    func body(content: Content) -> some View {
-        if glass { content.glassEffect(.regular.tint(Folio.paper.opacity(0.3)), in: .rect(cornerRadius: 14)) }
-        else { content }
     }
 }

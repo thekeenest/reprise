@@ -42,6 +42,51 @@ final class AppModel {
         didSet { if let id = current?.id { Prefs.rememberValues(fillValues, for: id) } }
     }
 
+    // MARK: Design state (which surfaces are open)
+
+    /// Console and Board: the current prompt is open for editing rather than for running.
+    var editing = false
+    /// Board: the run card over the board.
+    var showRun = false
+    /// Studio: the library palette.
+    var showPalette = false
+    /// Console: bumped by ⌘K to focus the search field.
+    var focusSearchToken = 0
+    /// Bumped to open the Settings window (demo recording).
+    var openSettingsToken = 0
+    /// Studio: prompts open as tabs, in order. Persisted across launches.
+    var openTabs: [ID] = (UserDefaults.standard.array(forKey: "openTabs") as? [NSNumber])?.map { $0.int64Value } ?? [] {
+        didSet { UserDefaults.standard.set(openTabs.map { NSNumber(value: $0) }, forKey: "openTabs") }
+    }
+
+    /// The text that Copy will put on the clipboard: blanks filled, includes expanded.
+    var preview: String {
+        guard let p = current else { return "" }
+        var copy = p
+        if let (id, text) = pendingBody, id == p.id { copy.body = text }
+        return store.payload(copy, values: fillValues, includeAttachments: false, clipboard: { "" })
+    }
+
+    /// Copy the open prompt with the values typed into its blanks.
+    func copyCurrent() {
+        guard let p = current else { return }
+        flushSave()
+        copy((try? store.prompt(p.id)) ?? p, values: fillValues)
+    }
+
+    func open(_ id: ID) {
+        if !openTabs.contains(id) { openTabs.append(id) }
+        selectedID = id
+    }
+
+    func closeTab(_ id: ID) {
+        guard let i = openTabs.firstIndex(of: id) else { return }
+        openTabs.remove(at: i)
+        if selectedID == id {
+            selectedID = openTabs.isEmpty ? nil : openTabs[min(i, openTabs.count - 1)]
+        }
+    }
+
     @ObservationIgnored private var pendingBody: (ID, String)?
     @ObservationIgnored private var saveWork: DispatchWorkItem?
     @ObservationIgnored private var searchWork: DispatchWorkItem?
@@ -206,7 +251,24 @@ final class AppModel {
 
     // MARK: Commands
 
+    /// Set by a column's "+" so the next new prompt lands in that project.
+    @ObservationIgnored private var nextProjectID: ID?
+    func scopeForNew(_ id: ID) { nextProjectID = id }
+
+    var scopeTitle: String {
+        switch scope {
+        case .all: return "All Prompts"
+        case .pinned: return "Pinned"
+        case .templates: return "Templates"
+        case .recent: return "Recently Used"
+        case .trash: return "Trash"
+        case .project(let id): return project(id)?.name ?? "Project"
+        case .space(let id): return space(id)?.name ?? "Space"
+        }
+    }
+
     var targetProjectID: ID {
+        if let n = nextProjectID { nextProjectID = nil; return n }
         switch scope {
         case .project(let id): return id
         case .space(let sid): if let p = projects.first(where: { $0.spaceID == sid }) { return p.id }
@@ -219,10 +281,11 @@ final class AppModel {
     func newPrompt(body: String = "", title: String = "Untitled prompt") {
         flushSave()
         guard let p = try? store.createPrompt(projectID: targetProjectID, title: title, body: body) else { return }
-        if case .project = scope {} else if scope != .all { scope = .all }
+        if World.current == .console, scope == .trash || scope == .pinned || scope == .recent || scope == .templates { scope = .all }
         query = ""
         reloadList()
-        selectedID = p.id
+        if World.current == .studio { open(p.id) } else { selectedID = p.id }
+        editing = true
         focusTitle = true
         reloadStructure()
     }
@@ -250,7 +313,8 @@ final class AppModel {
         flushSave()
         let restoring = scope == .trash
         try? store.setFlag(id, trashed: !restoring)
-        if selectedID == id { selectedID = nil }
+        openTabs.removeAll { $0 == id }
+        if selectedID == id { selectedID = nil; editing = false; showRun = false }
         reloadList()
         if selectedID == nil { selectedID = items.first?.id }
         show(restoring ? "Restored" : "Moved to Trash")

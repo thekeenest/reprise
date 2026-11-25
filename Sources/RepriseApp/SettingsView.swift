@@ -9,7 +9,8 @@ struct SettingsView: View {
             Tab("Agents", systemImage: "terminal") { AgentSettings() }
             Tab("Library", systemImage: "externaldrive") { LibrarySettings() }
         }
-        .frame(width: 560, height: 440)
+        .frame(width: 560, height: 560)
+        .tint(Folio.rubric)
     }
 }
 
@@ -22,32 +23,21 @@ struct AppearanceSettings: View {
     var body: some View {
         let _ = worldRaw
         Form {
-            Section("Design") {
-                HStack(alignment: .top, spacing: 14) {
-                    ForEach(World.allCases) { w in
-                        Button { World.set(w) } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                WorldSwatch(style: w.style, dark: look == .iron)
-                                    .overlay(Rectangle().strokeBorder(World.current == w ? Folio.ink : Folio.rule,
-                                                                      lineWidth: World.current == w ? 1.5 : 1))
-                                Text(w.rawValue).font(.system(size: 12.5, weight: .medium))
-                                Text(w.blurb).font(.system(size: 11)).foregroundStyle(Folio.slate)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .frame(width: 148, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            Section("Look") {
-                Picker("Look", selection: $look) {
+            Section("Theme") {
+                Picker("Theme", selection: $look) {
                     ForEach(Look.allCases) { Text($0.name).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                Text("\(look.subtitle). ⇧⌘L cycles looks.").font(.system(size: 11)).foregroundStyle(Folio.slate)
+                Text("Dark is the default. ⇧⌘L switches themes.").font(.system(size: 11)).foregroundStyle(Folio.slate)
             }
-            Section("Text") {
+            Section("Design") {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(World.allCases) { w in
+                        DesignCard(world: w, selected: World.current == w) { World.set(w) }
+                    }
+                }
+            }
+            Section("Editor text") {
                 Picker("Typeface", selection: $fontChoice) {
                     Text("Auto").tag("")
                     ForEach(EditorFont.allCases) { Text($0.rawValue).tag($0.rawValue) }
@@ -63,41 +53,92 @@ struct AppearanceSettings: View {
     }
 }
 
-/// A miniature page drawn straight from a world's tokens, so all three can be compared side by side.
-struct WorldSwatch: View {
-    let style: Style
-    var dark = false
-    private func c(_ p: Style.Pair) -> Color { Color(hex: dark ? p.dark : p.light) }
+struct DesignCard: View {
+    let world: World
+    let selected: Bool
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                DesignSchematic(world: world)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(selected ? Folio.rubric : Folio.rule, lineWidth: selected ? 2 : 1))
+                Text(world.rawValue).font(.system(size: 12.5, weight: .semibold))
+                Text(world.blurb).font(.system(size: 11)).foregroundStyle(Folio.slate)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: 150, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A miniature of each design's layout, drawn from its dark tokens, so the choice is about structure.
+struct DesignSchematic: View {
+    let world: World
+    private var s: Style { world.style }
+    private func c(_ p: Style.Pair, _ o: Double = 1) -> Color { Color(hex: p.dark).opacity(o) }
 
     var body: some View {
-        let r = style.radius
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Aa")
-                    .font(.system(size: 15, weight: style.titleWeight, design: style.textDesign))
-                    .foregroundStyle(c(style.ink))
-                Rectangle().fill(c(style.ink).opacity(0.2)).frame(height: 1)
-                Rectangle().fill(c(style.slate).opacity(0.6)).frame(width: 70, height: 3)
-                HStack(spacing: 3) {
-                    Rectangle().fill(c(style.slate).opacity(0.6)).frame(width: 26, height: 3)
-                    Rectangle().fill(c(style.accent)).frame(width: 18, height: 3)
-                    Rectangle().fill(c(style.slate).opacity(0.6)).frame(width: 18, height: 3)
+        ZStack(alignment: .topLeading) {
+            c(s.paperDeep)
+            switch world {
+            case .console:
+                VStack(spacing: 0) {
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2).fill(c(s.ink, 0.25)).frame(height: 8)
+                        RoundedRectangle(cornerRadius: 2).fill(c(s.fill)).frame(width: 18, height: 8)
+                    }.padding(6).background(c(s.paper))
+                    HStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(0..<6) { i in RoundedRectangle(cornerRadius: 1.5).fill(c(s.ink, i == 1 ? 0.5 : 0.18)).frame(height: 4) }
+                        }.padding(6).frame(width: 52)
+                        VStack(alignment: .leading, spacing: 4) {
+                            RoundedRectangle(cornerRadius: 1.5).fill(c(s.ink, 0.6)).frame(width: 46, height: 5)
+                            RoundedRectangle(cornerRadius: 2).fill(c(s.ink, 0.1)).frame(height: 22)
+                            RoundedRectangle(cornerRadius: 2).fill(c(s.fill)).frame(height: 7)
+                        }.padding(6).frame(maxWidth: .infinity).background(c(s.paper))
+                    }
+                }
+            case .board:
+                VStack(spacing: 0) {
+                    HStack(spacing: 4) {
+                        ForEach(0..<3) { i in RoundedRectangle(cornerRadius: 1.5).fill(c(s.ink, i == 0 ? 0.5 : 0.2)).frame(width: 16, height: 5) }
+                        Spacer()
+                        RoundedRectangle(cornerRadius: 2).fill(c(s.fill)).frame(width: 18, height: 7)
+                    }.padding(6).background(c(s.paper))
+                    HStack(alignment: .top, spacing: 5) {
+                        ForEach(0..<3) { col in
+                            VStack(spacing: 4) {
+                                ForEach(Array(0..<(3 - col % 2)), id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(c(s.raised)).overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c(s.ink, 0.12), lineWidth: 0.5)).frame(height: 12) }
+                            }.padding(3).background(RoundedRectangle(cornerRadius: 3).fill(c(s.paper)))
+                        }
+                    }.padding(6)
+                }
+            case .studio:
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
+                        ForEach(0..<3) { i in Rectangle().fill(i == 0 ? c(s.paper) : .clear).frame(width: 26, height: 10)
+                            .overlay(alignment: .top) { if i == 0 { Rectangle().fill(c(s.accent)).frame(height: 1.5) } } }
+                        Spacer()
+                    }.background(c(s.paperDeep))
+                    HStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Aa").font(.system(size: 11, design: .serif)).foregroundStyle(c(s.ink))
+                            ForEach(0..<4) { _ in RoundedRectangle(cornerRadius: 1).fill(c(s.ink, 0.2)).frame(height: 3) }
+                        }.padding(7).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(c(s.paper))
+                        VStack(alignment: .leading, spacing: 4) {
+                            RoundedRectangle(cornerRadius: 1).fill(c(s.ink, 0.15)).frame(height: 6)
+                            RoundedRectangle(cornerRadius: 1).fill(c(s.ink, 0.15)).frame(height: 6)
+                            RoundedRectangle(cornerRadius: 1.5).fill(c(s.fill)).frame(height: 6)
+                        }.padding(5).frame(width: 44)
+                    }
                 }
             }
-            .padding(10)
-            Spacer(minLength: 0)
-            Rectangle().fill(c(style.ink).opacity(0.15)).frame(width: 1)
-            VStack(alignment: .leading, spacing: 6) {
-                RoundedRectangle(cornerRadius: min(r, 2)).fill(c(style.accent)).frame(width: 7, height: 7)
-                RoundedRectangle(cornerRadius: min(r, 3))
-                    .fill(style.primaryFilled ? c(style.accent) : .clear)
-                    .overlay(RoundedRectangle(cornerRadius: min(r, 3)).strokeBorder(c(style.accent), lineWidth: 1))
-                    .frame(width: 28, height: 9)
-            }
-            .padding(8)
         }
-        .frame(width: 148, height: 80)
-        .background(c(style.paper))
+        .frame(width: 150, height: 86)
     }
 }
 

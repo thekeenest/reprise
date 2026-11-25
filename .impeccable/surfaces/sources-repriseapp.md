@@ -7,18 +7,18 @@ related_targets: []
 
 # Main window (Operate)
 
-Scope: Reprise's main window (sidebar, prompt index, editor page with margin apparatus), plus the Quick Panel, sheets and Settings that inherit it. Visitor mode: Operate. Users write and refine long agent prompts here; retrieval lives in the Quick Panel.
+Scope: Reprise's main window in three structures (Console, Board, Studio), plus the Quick Panel, sheets and Settings that inherit it. Visitor mode: Operate. Users write and refine long agent prompts here; retrieval lives in the Quick Panel.
 
 ## Direction contract
 
-THESIS: Each prompt is set like a text in a reference edition. The prompt gets a book measure in a serif, and its machinery (blanks, includes, attachments, versions, publishing) hangs in a ruled margin beside it. This refuses the notes-app default of colored sidebar, snippet list and plain editor.
+THESIS: A prompt library must not look like a notes app, and the notes-app tell is structural (sidebar, list, editor), not chromatic. Reprise therefore ships three designs with three different structures, each its own build, all on one library and one rule set: one primary action (Copy Prompt, ⌘↩, with the exact payload shown above it), New Prompt always in the top bar, dark by default.
 
-OWN-WORLD: The palette is unbleached bone paper (#F3F1EB), iron-black ink (#1B1A18), slate secondary and one rubric vermilion (#B8321F). Iron is the dark edition (#151514 ground, bone ink, #EF6A52 rubric). Vellum is a translucent glass edition. Every rule is a one-pixel hairline, there are no rounded cards, and labels are small caps with tracking. New York sets the text and titles, and SF sets the controls. Project color appears only as a 7 pt square key.
+OWN-WORLD: Console is cool graphite (#111113) with one coral signal (#FF7452), SF Pro, 8 pt radius. Board is near-black monochrome (#0E0F10) whose primary button is ink (white), with mint (#5EE0A8) only on blanks and templates, 10 pt tiles. Studio is warm iron (#161514) with bone ink and vermilion (#EF6A52), New York titles and small caps, the Edition's heir. Each has a Light theme; Dark is the default. No tinted glass, no gradients.
 
-STORY: Users see their library as a table of contents. They write in a calm page, fill blanks in the margin, and play the prompt with ⌘↩. Nothing is colored unless it can be filled, played or identified.
+STORY: Console: type, arrow, ⌘↩. Board: see every project at once, click a tile, fill, copy, drag tiles between projects. Studio: open prompts in tabs, write, and test the template in the inspector beside the page.
 
-FIRST VIEWPORT: The native sidebar holds small-caps sections and square project keys. The index is a single list of serif titles with right-aligned tabular token counts, an apparatus line under each title, and the selection bracketed in a rubric hairline. The page has a small-caps project line, a 30 pt New York title, a hairline rule and the stats in small caps. The text column is capped at a ~72ch measure, and the right margin carries keyed BLANKS fields (A, B, C) above INCLUDES, FILES and PUBLISHING. The primary action, Use, is the native toolbar's prominent button.
+FIRST VIEWPORT: Console opens on a large search field, a results column with Pinned on top, and the selected prompt's blanks, payload and Copy button. Board opens on space tabs and project columns of tiles. Studio opens on the last tabs, the page, and the Run inspector.
 
-FORM: Annotated Edition (challenger rw-centre-rail-reference-setting, chosen by the user over the assigned Machined Aluminum); seed:39be0b7ef1750db5. Signature move: rubric blanks. Placeholders print in rubric in the text, and the margin holds their key letter and live value.
+FORM: Three structural designs (user request, 2026-11-25: "totally different designs, not just different color palettes"). They replace the earlier palette-only variants of the Annotated Edition (challenger rw-centre-rail-reference-setting; seed:39be0b7ef1750db5), whose type and vermilion survive in Studio. Signature moves: Console's action bar, Board's run card, Studio's tabs plus Run inspector.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

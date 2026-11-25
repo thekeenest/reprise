@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 # Builds Reprise.app (universal-ready, ad-hoc signed) into ./dist
-#   scripts/build-app.sh                      release build of the default design (Edition)
-#   scripts/build-app.sh --world Machined     a build whose default design is Machined (or Quiet)
+#   scripts/build-app.sh                      release build of the default design (Console)
+#   scripts/build-app.sh --world Board        a build whose design is Board (or Studio)
 #   scripts/build-app.sh --all                all three designs, side by side in ./dist
 #   scripts/build-app.sh --install            also copies to /Applications and links the CLI
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-WORLD="Edition"; INSTALL=0
+WORLD="Console"; INSTALL=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --world) WORLD="$2"; shift 2 ;;
     --install) INSTALL=1; shift ;;
     --all)
-      for w in Edition Machined Quiet; do "$0" --world "$w"; done
+      for w in Console Board Studio; do "$0" --world "$w"; done
       exit 0 ;;
     *) echo "unknown option $1"; exit 1 ;;
   esac
 done
 
-VERSION="0.2.0"
+VERSION="0.3.0"
 CONFIG="release"
-if [[ "$WORLD" == "Edition" ]]; then
+if [[ "$WORLD" == "Console" ]]; then
   APP="dist/Reprise.app"; BUNDLE_ID="dev.thekeenest.reprise"; NAME="Reprise"; ICON="Resources/AppIcon.icns"
 else
   LOWER="$(echo "$WORLD" | tr '[:upper:]' '[:lower:]')"
@@ -49,7 +49,7 @@ if [ ! -f "$ICON" ]; then
     d=$((s*2)); sips -z $d $d "$ICONTMP/icon-1024.png" --out "$SET/icon_${s}x${s}@2x.png" >/dev/null
   done
   iconutil -c icns "$SET" -o "$ICON"
-  if [[ "$WORLD" == "Edition" ]]; then cp "$ICONTMP/icon-1024.png" docs/assets/icon.png
+  if [[ "$WORLD" == "Console" ]]; then cp "$ICONTMP/icon-1024.png" docs/assets/icon.png
   else cp "$ICONTMP/icon-1024.png" "docs/assets/icon-$LOWER.png"; fi
 fi
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"

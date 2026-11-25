@@ -4,24 +4,23 @@ import RepriseCore
 
 // MARK: Worlds
 
-/// A complete visual world. Reprise ships three, each with a light, a dark and a glass look.
-/// One codebase; each release build picks its default world from Info.plist (`RepriseWorld`),
-/// and Settings → Appearance can switch worlds live.
+/// A complete design. Reprise ships three, and they differ in structure, not just in color:
+/// Console is launcher-first, Board is spatial, Studio is editor-first.
+/// Each release build picks its design from Info.plist (`RepriseWorld`); Settings can switch live.
 enum World: String, CaseIterable, Identifiable {
-    /// A reference edition: New York on bone paper, hairline rules, one rubric red.
-    case edition = "Edition"
-    /// A precision instrument: aluminum and graphite, SF Pro, signal orange, numbered key caps.
-    case machined = "Machined"
-    /// A record sleeve: warm gray, light large type, wide-tracked captions, one ink blue.
-    case quiet = "Quiet"
+    /// Launcher-first: one search field, results, a run panel, an action bar. No sidebar.
+    case console = "Console"
+    /// Spatial: spaces as tabs, projects as columns, prompts as tiles. Run and edit in focused overlays.
+    case board = "Board"
+    /// Editor-first: prompts open in tabs, the library is a palette, a run inspector on the right.
+    case studio = "Studio"
 
     var id: String { rawValue }
 
-    /// The world in force. Read once at launch, then changed only through `set(_:)`.
     private(set) static var current: World = {
         if let raw = UserDefaults.standard.string(forKey: "world"), let w = World(rawValue: raw) { return w }
         if let raw = Bundle.main.object(forInfoDictionaryKey: "RepriseWorld") as? String, let w = World(rawValue: raw) { return w }
-        return .edition
+        return .console
     }()
 
     static func set(_ w: World) {
@@ -32,17 +31,17 @@ enum World: String, CaseIterable, Identifiable {
 
     var style: Style {
         switch self {
-        case .edition: return .edition
-        case .machined: return .machined
-        case .quiet: return .quiet
+        case .console: return .console
+        case .board: return .board
+        case .studio: return .studio
         }
     }
 
     var blurb: String {
         switch self {
-        case .edition: return "A reference edition. Serif text, hairline rules, one rubric red."
-        case .machined: return "A precision instrument. Aluminum, graphite, signal orange."
-        case .quiet: return "A record sleeve. Warm gray, light type, one ink blue."
+        case .console: return "Launcher-first. Search, fill, copy. No sidebar."
+        case .board: return "Spatial. Projects as columns, prompts as tiles."
+        case .studio: return "Editor-first. Prompts in tabs, a run inspector beside the page."
         }
     }
 }
@@ -51,21 +50,23 @@ extension Notification.Name {
     static let worldDidChange = Notification.Name("reprise.worldDidChange")
 }
 
-/// Everything a world decides. Views never hard-code a color, face or radius; they ask the style.
+/// Everything a design decides about surface. Views never hard-code a color, face or radius.
 struct Style {
     struct Pair { var light: String; var dark: String }
 
-    var paper, paperDeep, ink, slate, ash, accent: Pair
+    var paper, paperDeep, raised, ink, slate, ash, accent: Pair
+    /// The primary button: its fill and its label.
+    var fill, onFill: Pair
     var ruleAlpha: (light: CGFloat, dark: CGFloat)
     var washAlpha: (light: CGFloat, dark: CGFloat)
 
-    var textDesign: Font.Design          // titles and index entries
+    var textDesign: Font.Design
     var titleSize: CGFloat
     var titleWeight: Font.Weight
     var titleTracking: CGFloat
     var entryWeight: Font.Weight
 
-    enum Labels { case smallCaps, uppercase }
+    enum Labels { case smallCaps, uppercase, plain }
     var labels: Labels
     var labelTracking: CGFloat
     var labelWeight: Font.Weight
@@ -81,81 +82,77 @@ struct Style {
     var editorFont: EditorFont
     var editorSize: Double
     var lineHeight: CGFloat
-    var lookNames: [Look: String]
-    var lookSubtitles: [Look: String]
 
-    static let edition = Style(
-        paper: .init(light: "#F3F1EB", dark: "#151514"),
-        paperDeep: .init(light: "#EAE7DF", dark: "#1C1C1A"),
+    /// Console: cool graphite, one coral signal, Raycast-grade density.
+    static let console = Style(
+        paper: .init(light: "#F7F7F8", dark: "#111113"),
+        paperDeep: .init(light: "#EEEEF0", dark: "#0B0B0C"),
+        raised: .init(light: "#FFFFFF", dark: "#18181B"),
+        ink: .init(light: "#18181B", dark: "#EDEDEF"),
+        slate: .init(light: "#5E5E66", dark: "#9A9AA3"),
+        ash: .init(light: "#A1A1AA", dark: "#5C5C63"),
+        accent: .init(light: "#E5532F", dark: "#FF7452"),
+        fill: .init(light: "#E5532F", dark: "#FF6A45"),
+        onFill: .init(light: "#FFFFFF", dark: "#160B07"),
+        ruleAlpha: (0.1, 0.09), washAlpha: (0.04, 0.05),
+        textDesign: .default, titleSize: 22, titleWeight: .semibold, titleTracking: -0.3, entryWeight: .regular,
+        labels: .plain, labelTracking: 0, labelWeight: .medium,
+        radius: 8, keys: .numberCaps, selection: .fill, detent: false, primaryFilled: true,
+        editorFont: .sans, editorSize: 14, lineHeight: 1.5)
+
+    /// Board: monochrome near-black, white primary, one mint for blanks.
+    static let board = Style(
+        paper: .init(light: "#FBFBFA", dark: "#0E0F10"),
+        paperDeep: .init(light: "#F2F2F0", dark: "#08090A"),
+        raised: .init(light: "#FFFFFF", dark: "#161719"),
+        ink: .init(light: "#141516", dark: "#F2F3F3"),
+        slate: .init(light: "#62666D", dark: "#8B9097"),
+        ash: .init(light: "#A3A7AD", dark: "#565A60"),
+        accent: .init(light: "#0F8F5F", dark: "#5EE0A8"),
+        fill: .init(light: "#141516", dark: "#F2F3F3"),
+        onFill: .init(light: "#FFFFFF", dark: "#0E0F10"),
+        ruleAlpha: (0.09, 0.08), washAlpha: (0.035, 0.045),
+        textDesign: .default, titleSize: 24, titleWeight: .semibold, titleTracking: -0.5, entryWeight: .medium,
+        labels: .uppercase, labelTracking: 0.8, labelWeight: .semibold,
+        radius: 10, keys: .letters, selection: .fill, detent: false, primaryFilled: true,
+        editorFont: .sans, editorSize: 14.5, lineHeight: 1.55)
+
+    /// Studio: warm iron and bone, New York titles, one vermilion. The Edition's heir.
+    static let studio = Style(
+        paper: .init(light: "#F3F1EB", dark: "#161514"),
+        paperDeep: .init(light: "#EAE7DF", dark: "#0F0E0D"),
+        raised: .init(light: "#FBFAF6", dark: "#1D1C1A"),
         ink: .init(light: "#1B1A18", dark: "#ECE9E1"),
         slate: .init(light: "#5F5D57", dark: "#A6A39B"),
         ash: .init(light: "#98958C", dark: "#6F6C65"),
         accent: .init(light: "#B8321F", dark: "#EF6A52"),
-        ruleAlpha: (0.24, 0.2), washAlpha: (0.045, 0.055),
-        textDesign: .serif, titleSize: 30, titleWeight: .regular, titleTracking: 0, entryWeight: .regular,
-        labels: .smallCaps, labelTracking: 0.9, labelWeight: .medium,
-        radius: 0, keys: .letters, selection: .bracket, detent: true, primaryFilled: false,
-        editorFont: .serif, editorSize: 15, lineHeight: 1.42,
-        lookNames: [.bone: "Bone", .iron: "Iron", .vellum: "Vellum"],
-        lookSubtitles: [.bone: "Ink on unbleached paper", .iron: "Bone ink on iron", .vellum: "Translucent; follows the system"])
-
-    static let machined = Style(
-        paper: .init(light: "#EBEBE8", dark: "#18181A"),
-        paperDeep: .init(light: "#E0E0DC", dark: "#111113"),
-        ink: .init(light: "#141416", dark: "#EEEEEB"),
-        slate: .init(light: "#5A5A5F", dark: "#A0A0A5"),
-        ash: .init(light: "#9B9BA0", dark: "#66666B"),
-        accent: .init(light: "#E5470E", dark: "#FF6A2B"),
-        ruleAlpha: (0.13, 0.13), washAlpha: (0.06, 0.07),
-        textDesign: .default, titleSize: 27, titleWeight: .semibold, titleTracking: -0.5, entryWeight: .medium,
-        labels: .uppercase, labelTracking: 1.1, labelWeight: .semibold,
-        radius: 6, keys: .numberCaps, selection: .fill, detent: false, primaryFilled: true,
-        editorFont: .sans, editorSize: 14, lineHeight: 1.4,
-        lookNames: [.bone: "Aluminum", .iron: "Graphite", .vellum: "Glass"],
-        lookSubtitles: [.bone: "Bead-blasted aluminum", .iron: "Graphite, for late sessions", .vellum: "Translucent; follows the system"])
-
-    static let quiet = Style(
-        paper: .init(light: "#ECEAE5", dark: "#1A1A19"),
-        paperDeep: .init(light: "#E3E0DA", dark: "#141413"),
-        ink: .init(light: "#232321", dark: "#E6E4DF"),
-        slate: .init(light: "#6B6862", dark: "#9D9A93"),
-        ash: .init(light: "#A3A098", dark: "#64625D"),
-        accent: .init(light: "#2D5A8A", dark: "#86AEDB"),
-        ruleAlpha: (0.14, 0.14), washAlpha: (0.04, 0.05),
-        textDesign: .default, titleSize: 34, titleWeight: .light, titleTracking: -0.3, entryWeight: .regular,
-        labels: .uppercase, labelTracking: 1.7, labelWeight: .regular,
-        radius: 2, keys: .roman, selection: .accentTitle, detent: false, primaryFilled: false,
-        editorFont: .sans, editorSize: 14.5, lineHeight: 1.55,
-        lookNames: [.bone: "Day", .iron: "Night", .vellum: "Haze"],
-        lookSubtitles: [.bone: "Warm gray board", .iron: "Charcoal sleeve", .vellum: "Translucent; follows the system"])
+        fill: .init(light: "#B8321F", dark: "#E85A40"),
+        onFill: .init(light: "#FFFFFF", dark: "#FFFFFF"),
+        ruleAlpha: (0.16, 0.12), washAlpha: (0.045, 0.05),
+        textDesign: .serif, titleSize: 28, titleWeight: .regular, titleTracking: 0, entryWeight: .regular,
+        labels: .smallCaps, labelTracking: 0.8, labelWeight: .medium,
+        radius: 4, keys: .letters, selection: .bracket, detent: true, primaryFilled: true,
+        editorFont: .serif, editorSize: 15, lineHeight: 1.45)
 }
 
-/// Light, dark, and glass. Names come from the world ("Bone", "Aluminum", "Day"…).
+/// The theme setting. Dark is the default in every design.
 enum Look: String, CaseIterable, Identifiable {
-    case bone = "Bone"
-    case iron = "Iron"
-    case vellum = "Vellum"
+    case dark = "Dark"
+    case light = "Light"
+    case system = "System"
     var id: String { rawValue }
 
-    var name: String { World.current.style.lookNames[self] ?? rawValue }
-    var subtitle: String { World.current.style.lookSubtitles[self] ?? "" }
+    var name: String { self == .system ? "Match System" : rawValue }
 
     var scheme: ColorScheme? {
         switch self {
-        case .bone: return .light
-        case .iron: return .dark
-        case .vellum: return nil
+        case .dark: return .dark
+        case .light: return .light
+        case .system: return nil
         }
     }
 
-    /// Accepts values stored by 0.1 ("Liquid", "Tinted", "Ink").
-    static func stored(_ raw: String?) -> Look {
-        switch raw {
-        case "Ink": return .iron
-        case "Liquid", "Tinted": return .bone
-        default: return raw.flatMap(Look.init(rawValue:)) ?? .bone
-        }
-    }
+    static func stored(_ raw: String?) -> Look { raw.flatMap(Look.init(rawValue:)) ?? .dark }
 }
 
 // MARK: Tokens
@@ -174,6 +171,9 @@ enum Folio {
 
     static let nsPaper = dyn { $0.paper }
     static let nsPaperDeep = dyn { $0.paperDeep }
+    static let nsRaised = dyn { $0.raised }
+    static let nsFill = dyn { $0.fill }
+    static let nsOnFill = dyn { $0.onFill }
     static let nsInk = dyn { $0.ink }
     static let nsSlate = dyn { $0.slate }
     static let nsAsh = dyn { $0.ash }
@@ -188,6 +188,10 @@ enum Folio {
 
     static let paper = Color(nsColor: nsPaper)
     static let paperDeep = Color(nsColor: nsPaperDeep)
+    /// Surfaces that sit above the ground: fields, tiles, cards, the run panel.
+    static let raised = Color(nsColor: nsRaised)
+    static let fill = Color(nsColor: nsFill)
+    static let onFill = Color(nsColor: nsOnFill)
     static let ink = Color(nsColor: nsInk)
     static let slate = Color(nsColor: nsSlate)
     static let ash = Color(nsColor: nsAsh)
@@ -198,8 +202,6 @@ enum Folio {
     static let onAccent = Color(nsColor: nsOnAccent)
 
     static var style: Style { World.current.style }
-    /// Filled controls use the deep accent in both appearances, so white labels keep their contrast.
-    static var fill: Color { Color(hex: style.accent.light) }
     static var radius: CGFloat { style.radius }
 
     /// Blank keys in the world's numbering: A B C, 1 2 3, or i ii iii.
@@ -228,7 +230,7 @@ extension Font {
     /// The caption voice: small caps (Edition) or tracked capitals (Machined, Quiet).
     static func apparatus(_ size: CGFloat = 10.5, weight: Font.Weight? = nil) -> Font {
         let s = Folio.style
-        let f = Font.system(size: s.labels == .smallCaps ? size : size * 0.9, weight: weight ?? s.labelWeight)
+        let f = Font.system(size: s.labels == .uppercase ? size * 0.9 : size + (s.labels == .plain ? 1 : 0), weight: weight ?? s.labelWeight)
         return s.labels == .smallCaps ? f.lowercaseSmallCaps() : f
     }
     /// The text voice: New York in Edition, SF Pro elsewhere.
@@ -253,7 +255,7 @@ struct Caps: View {
     }
     var body: some View {
         let s = Folio.style
-        Text(s.labels == .smallCaps ? text.lowercased() : text.uppercased())
+        Text(s.labels == .smallCaps ? text.lowercased() : s.labels == .uppercase ? text.uppercased() : text)
             .font(.apparatus(size))
             .tracking(s.labelTracking)
             .foregroundStyle(color)
@@ -301,7 +303,7 @@ struct BlankKey: View {
         case .numberCaps:
             Text(Folio.key(index))
                 .font(.system(size: 10, weight: .bold).monospacedDigit())
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Folio.onFill)
                 .frame(width: 16, height: 16)
                 .background(Folio.fill, in: RoundedRectangle(cornerRadius: 3.5, style: .continuous))
                 .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 4 }
@@ -353,7 +355,7 @@ struct PrimaryLabel: View {
             Text(shortcut).font(.system(size: 11).monospacedDigit()).opacity(0.8)
         }
         .font(.system(size: 12.5, weight: .medium))
-        .foregroundStyle(s.primaryFilled ? Color.white : Folio.rubric)
+        .foregroundStyle(s.primaryFilled ? Folio.onFill : Folio.rubric)
         .padding(.horizontal, 12)
         .frame(height: 30)
         .background { if s.primaryFilled { shape.fill(Folio.fill) } }
@@ -373,19 +375,11 @@ struct ColorKey: View {
     }
 }
 
-/// The window ground for each look. Glass lets the desktop through.
+/// The window ground. Dynamic colors follow the theme; there is no tinted glass.
 struct Ground: View {
-    var look: Look
+    var look: Look = .dark
     var deep = false
-    var body: some View {
-        switch look {
-        case .vellum:
-            VisualEffect(material: deep ? .sidebar : .underWindowBackground)
-                .overlay((deep ? Folio.paperDeep : Folio.paper).opacity(0.42))
-        default:
-            deep ? Folio.paperDeep : Folio.paper
-        }
-    }
+    var body: some View { deep ? Folio.paperDeep : Folio.paper }
 }
 
 struct VisualEffect: NSViewRepresentable {
@@ -463,10 +457,10 @@ extension Date {
     }
 }
 
-/// `@AppStorage("look")` with migration from 0.1 values.
+/// `@AppStorage("theme")`. Dark unless the person chose otherwise.
 @propertyWrapper
 struct LookSetting: DynamicProperty {
-    @AppStorage("look") private var raw: String = Look.bone.rawValue
+    @AppStorage("theme") private var raw: String = Look.dark.rawValue
     var wrappedValue: Look {
         get { Look.stored(raw) }
         nonmutating set { raw = newValue.rawValue }

@@ -15,7 +15,7 @@ struct RepriseApp: App {
                 .preferredColorScheme(look.scheme)
                 .frame(minWidth: 980, minHeight: 580)
         }
-        .windowToolbarStyle(.unified)
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 880)
         .commands { RepriseCommands(model: model) }
 
@@ -67,26 +67,40 @@ struct RepriseCommands: Commands {
             Button("Export Library as Markdown…") { exportLibrary() }.keyboardShortcut("e", modifiers: [.command, .shift])
         }
         CommandMenu("Prompt") {
-            Button("Use (Copy Filled)") { if let id = model.selectedID { model.use(id) } }.keyboardShortcut(.return, modifiers: .command)
-            Button("Copy Source") { if let id = model.selectedID { model.copyRaw(id) } }.keyboardShortcut("c", modifiers: [.command, .shift])
+            Button("Copy Prompt") {
+                if model.current != nil { model.copyCurrent() } else if let id = model.selectedID { model.use(id) }
+            }.keyboardShortcut(.return, modifiers: .command)
+            Button(model.editing ? "Done Editing" : "Edit Prompt") {
+                guard model.current != nil else { return }
+                model.flushSave()
+                if World.current == .studio { return }
+                model.editing.toggle()
+                if World.current == .board, !model.editing { model.showRun = true }
+            }.keyboardShortcut("e")
+            Button(World.current == .studio ? "Open Prompt…" : "Search") {
+                if World.current == .studio { model.showPalette = true } else { model.focusSearchToken += 1 }
+            }.keyboardShortcut(World.current == .studio ? "p" : "k")
+            Divider()
+            Button("Copy Template Source") { if let id = model.selectedID { model.copyRaw(id) } }.keyboardShortcut("c", modifiers: [.command, .shift])
             Button("Pin / Unpin") { if let id = model.selectedID { model.togglePin(id) } }.keyboardShortcut("p", modifiers: [.command, .shift])
             Button("Duplicate") { if let id = model.selectedID { model.duplicate(id) } }.keyboardShortcut("d")
             Button("Shuffle Color") { model.update { $0.color = Palette.random() } }.keyboardShortcut("k", modifiers: [.command, .shift])
             Button("Toggle Agent Command") { if let id = model.selectedID { model.toggleAgentCommand(id) } }.keyboardShortcut("t", modifiers: [.command, .shift])
-            Button("Show or Hide Margin") { model.showMargin.toggle() }.keyboardShortcut("0", modifiers: [.command, .option])
+            Button("Show or Hide Inspector") { model.showMargin.toggle() }.keyboardShortcut("0", modifiers: [.command, .option])
             Divider()
             Button("Sync Agent Commands Now") { model.syncAgents(silent: false) }
             Divider()
-            Button("Move to Trash") { if let id = model.selectedID { model.trash(id) } }.keyboardShortcut(.delete)
+            Button("Move to Trash") { if let id = model.selectedID { model.trash(id) } }
         }
+        CommandGroup(replacing: .printItem) {}
         CommandGroup(after: .toolbar) {
-            Picker("Look", selection: $look) {
+            Picker("Theme", selection: $look) {
                 ForEach(Look.allCases) { Text($0.name).tag($0) }
             }
             Picker("Design", selection: Binding(get: { World.current }, set: { World.set($0) })) {
                 ForEach(World.allCases) { Text($0.rawValue).tag($0) }
             }
-            Button("Next Look") {
+            Button("Next Theme") {
                 let all = Look.allCases
                 look = all[(all.firstIndex(of: look)! + 1) % all.count]
             }.keyboardShortcut("l", modifiers: [.command, .shift])
@@ -123,18 +137,18 @@ struct ContentView: View {
     @Environment(AppModel.self) private var model
     @LookSetting private var look
     @AppStorage("world") private var worldRaw = ""
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         @Bindable var model = model
         let _ = worldRaw
-        NavigationSplitView {
-            SidebarView()
-        } content: {
-            PromptListView()
-        } detail: {
-            EditorView()
+        Group {
+            switch World.current {
+            case .console: ConsoleView()
+            case .board: BoardView()
+            case .studio: StudioView()
+            }
         }
-        .searchable(text: $model.query, placement: .sidebar, prompt: "Search")
         .overlay(alignment: .bottom) {
             if let t = model.toast {
                 ToastView(toast: t)
@@ -147,8 +161,8 @@ struct ContentView: View {
         .sheet(item: $model.namingRequest) { NamingSheet(request: $0) }
         .sheet(isPresented: $model.showHarvest) { HarvestView() }
         .id(worldRaw)
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-        .tint(Folio.ink)
+        .tint(Folio.rubric)
+        .onChange(of: model.openSettingsToken) { openSettings() }
     }
 }
 

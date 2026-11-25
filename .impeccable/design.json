@@ -1,16 +1,20 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-25T00:51:40.553202+00:00",
+  "generatedAt": "2026-11-25T10:45:21.290914+00:00",
   "title": "Design System: Reprise",
   "extensions": {
     "colorMeta": {
-      "paper": {
+      "ground": {
         "role": "neutral",
-        "displayName": "Bone"
+        "displayName": "Graphite ground"
       },
-      "paper-deep": {
+      "ground-deep": {
         "role": "neutral",
-        "displayName": "Bone, deep"
+        "displayName": "Graphite, deep"
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised (fields, rows)"
       },
       "ink": {
         "role": "neutral",
@@ -24,115 +28,102 @@
         "role": "neutral",
         "displayName": "Ash"
       },
-      "rubric": {
+      "signal": {
         "role": "primary",
-        "displayName": "Vermilion rubric"
+        "displayName": "Coral signal"
       },
-      "iron-paper": {
+      "fill": {
+        "role": "primary",
+        "displayName": "Coral fill"
+      },
+      "on-fill": {
         "role": "neutral",
-        "displayName": "Iron"
+        "displayName": "Label on fill"
       },
-      "iron-rubric": {
+      "light-ground": {
+        "role": "neutral",
+        "displayName": "Light ground"
+      },
+      "light-ink": {
+        "role": "neutral",
+        "displayName": "Light ink"
+      },
+      "light-signal": {
         "role": "primary",
-        "displayName": "Vermilion on iron"
+        "displayName": "Coral on light"
       }
     },
     "typographyMeta": {
       "title": {
         "displayName": "Title",
-        "purpose": "The prompt's name, once per page."
+        "purpose": "The selected prompt's name."
       },
-      "page": {
-        "displayName": "Page",
-        "purpose": "The prompt text in the editor."
+      "search": {
+        "displayName": "Search",
+        "purpose": "The command bar input."
       },
-      "entry": {
-        "displayName": "Entry",
-        "purpose": "Titles in the index."
+      "row": {
+        "displayName": "Row",
+        "purpose": "Result titles."
       },
-      "apparatus": {
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prompt text in the editor and the copied preview."
+      },
+      "caption": {
         "displayName": "Caption",
-        "purpose": "All metadata: counts, dates, section names."
+        "purpose": "Project, counts, section names."
       },
       "placeholder": {
         "displayName": "Placeholder",
-        "purpose": "{{blanks}} in the text, in the rubric."
+        "purpose": "{{blanks}} in the editor, in the signal color."
       }
     },
     "worlds": {
-      "machined": {
-        "paper": [
-          "#EBEBE8",
-          "#18181A"
-        ],
-        "paperDeep": [
-          "#E0E0DC",
-          "#111113"
-        ],
-        "ink": [
-          "#141416",
-          "#EEEEEB"
-        ],
-        "slate": [
-          "#5A5A5F",
-          "#A0A0A5"
-        ],
-        "ash": [
-          "#9B9BA0",
-          "#66666B"
-        ],
-        "accent": [
-          "#E5470E",
-          "#FF6A2B"
-        ],
-        "title": "SF Pro 27 semibold -0.5",
-        "page": "SF Pro 14 / 1.40",
-        "captions": "uppercase semibold +1.1",
-        "radius": 6,
-        "keys": "number caps",
-        "selection": "fill",
-        "looks": [
-          "Aluminum",
-          "Graphite",
-          "Glass"
-        ]
+      "console": {
+        "build": "Reprise.app",
+        "default": true,
+        "structure": "Launcher-first: command bar, results, run panel, action bar. No sidebar.",
+        "dark": {
+          "ground": "#111113",
+          "ink": "#EDEDEF",
+          "signal": "#FF7452"
+        },
+        "light": {
+          "ground": "#F7F7F8",
+          "ink": "#18181B",
+          "signal": "#E5532F"
+        }
       },
-      "quiet": {
-        "paper": [
-          "#ECEAE5",
-          "#1A1A19"
-        ],
-        "paperDeep": [
-          "#E3E0DA",
-          "#141413"
-        ],
-        "ink": [
-          "#232321",
-          "#E6E4DF"
-        ],
-        "slate": [
-          "#6B6862",
-          "#9D9A93"
-        ],
-        "ash": [
-          "#A3A098",
-          "#64625D"
-        ],
-        "accent": [
-          "#2D5A8A",
-          "#86AEDB"
-        ],
-        "title": "SF Pro 34 light -0.3",
-        "page": "SF Pro 14.5 / 1.55",
-        "captions": "uppercase regular +1.7",
-        "radius": 2,
-        "keys": "italic roman",
-        "selection": "accent title",
-        "looks": [
-          "Day",
-          "Night",
-          "Haze"
-        ]
+      "board": {
+        "build": "Reprise Board.app",
+        "structure": "Spatial: space tabs, project columns, prompt tiles, run and edit cards.",
+        "dark": {
+          "ground": "#0E0F10",
+          "ink": "#F2F3F3",
+          "signal": "#5EE0A8",
+          "fill": "#F2F3F3"
+        },
+        "light": {
+          "ground": "#FBFBFA",
+          "ink": "#141516",
+          "signal": "#0F8F5F",
+          "fill": "#141516"
+        }
+      },
+      "studio": {
+        "build": "Reprise Studio.app",
+        "structure": "Editor-first: tabs, ⌘P palette, Run/Details inspector, status bar.",
+        "dark": {
+          "ground": "#161514",
+          "ink": "#ECE9E1",
+          "signal": "#EF6A52"
+        },
+        "light": {
+          "ground": "#F3F1EB",
+          "ink": "#1B1A18",
+          "signal": "#B8321F"
+        }
       }
     },
     "shadows": [],
@@ -147,111 +138,53 @@
         "value": "opacity 0.7, no scale",
         "purpose": "Pressed state for drawn buttons."
       }
-    ]
+    ],
+    "theme": {
+      "options": [
+        "Dark",
+        "Light",
+        "Match System"
+      ],
+      "default": "Dark",
+      "shortcut": "⇧⌘L"
+    }
   },
   "components": [
     {
-      "name": "Copy Filled (Edition)",
-      "kind": "button",
-      "refersTo": "button-copy-filled",
-      "description": "The margin's primary action, ⌘↩. Outlined in Edition and Quiet, filled in Machined.",
-      "html": "<button class=\"rp-copy-edition\">Copy filled <span>⌘↩</span></button>",
-      "css": ".rp-copy-edition{display:flex;justify-content:space-between;width:268px;padding:8px 14px;background:transparent;color:#B8321F;border:1px solid #B8321F;border-radius:0px;font:500 14px New York, Georgia, serif;} .rp-copy-edition:active{opacity:.7} .rp-copy-edition span{font-size:11px;opacity:.8}"
+      "name": "New Prompt",
+      "kind": "button-primary",
+      "note": "Filled, top right of every design."
     },
     {
-      "name": "Blank Key (Edition)",
-      "kind": "custom",
-      "refersTo": "blank-key",
-      "description": "Marks each template blank in the margin and the fill form.",
-      "html": "<span class=\"rp-key-edition\">A</span> <span style=\"font:13px system-ui\">repo</span>",
-      "css": ".rp-key-edition{color:#B8321F;font-family:Georgia,serif;font-weight:600}"
+      "name": "Copy Prompt",
+      "kind": "button-copy",
+      "note": "The only primary action. ⌘↩. Sits under the What-gets-copied preview."
     },
     {
-      "name": "Copy Filled (Machined)",
-      "kind": "button",
-      "refersTo": "button-copy-filled",
-      "description": "The margin's primary action, ⌘↩. Outlined in Edition and Quiet, filled in Machined.",
-      "html": "<button class=\"rp-copy-machined\">Copy filled <span>⌘↩</span></button>",
-      "css": ".rp-copy-machined{display:flex;justify-content:space-between;width:268px;padding:8px 14px;background:#E5470E;color:#fff;border:1px solid #E5470E;border-radius:6px;font:500 14px -apple-system, system-ui, sans-serif;} .rp-copy-machined:active{opacity:.7} .rp-copy-machined span{font-size:11px;opacity:.8}"
+      "name": "Run panel",
+      "kind": "composite",
+      "note": "Blank fields, payload preview with token count, Copy Prompt."
     },
     {
-      "name": "Blank Key (Machined)",
-      "kind": "custom",
-      "refersTo": "blank-key",
-      "description": "Marks each template blank in the margin and the fill form.",
-      "html": "<span class=\"rp-key-machined\">1</span> <span style=\"font:13px system-ui\">repo</span>",
-      "css": ".rp-key-machined{background:#E5470E;color:#fff;border-radius:4px;width:16px;height:16px;display:inline-grid;place-items:center;font:600 10px system-ui}"
+      "name": "Actions menu",
+      "kind": "menu",
+      "note": "Pin, Duplicate, Move, Shuffle Color, Copy Template Source, Publish, Versions, Trash."
     },
     {
-      "name": "Copy Filled (Quiet)",
-      "kind": "button",
-      "refersTo": "button-copy-filled",
-      "description": "The margin's primary action, ⌘↩. Outlined in Edition and Quiet, filled in Machined.",
-      "html": "<button class=\"rp-copy-quiet\">Copy filled <span>⌘↩</span></button>",
-      "css": ".rp-copy-quiet{display:flex;justify-content:space-between;width:268px;padding:8px 14px;background:transparent;color:#2D5A8A;border:1px solid #2D5A8A;border-radius:2px;font:500 14px -apple-system, system-ui, sans-serif;} .rp-copy-quiet:active{opacity:.7} .rp-copy-quiet span{font-size:11px;opacity:.8}"
+      "name": "Console action bar",
+      "kind": "bar",
+      "note": "Clickable shortcut hints: Copy ⌘↩, Edit ⌘E, New ⌘N, Search ⌘K."
     },
     {
-      "name": "Blank Key (Quiet)",
-      "kind": "custom",
-      "refersTo": "blank-key",
-      "description": "Marks each template blank in the margin and the fill form.",
-      "html": "<span class=\"rp-key-quiet\">i</span> <span style=\"font:13px system-ui\">repo</span>",
-      "css": ".rp-key-quiet{color:#2D5A8A;font-family:Georgia,serif;font-style:italic}"
-    },
-    {
-      "name": "Caption",
-      "kind": "custom",
-      "refersTo": "caption",
-      "description": "Small-caps or tracked uppercase apparatus label.",
-      "html": "<span class=\"rp-cap\">Engineering / Daily agent work · 94 tokens · saved</span>",
-      "css": ".rp-cap{font:500 10.5px system-ui;letter-spacing:.09em;text-transform:uppercase;color:#5F5D57}"
-    },
-    {
-      "name": "Index Row",
+      "name": "Board tile",
       "kind": "card",
-      "refersTo": "index-row",
-      "description": "One entry in the index: color key, title, token count, caption line.",
-      "html": "<div class=\"rp-row\"><i></i><div><b>Review this change</b><small>Daily agent work</small></div><em>94</em></div>",
-      "css": ".rp-row{display:flex;gap:10px;align-items:baseline;width:300px;padding:9px 16px;background:#F3F1EB;border-bottom:1px solid rgba(27,26,24,.24);font-family:Georgia,serif;color:#1B1A18} .rp-row i{width:6px;height:6px;background:#3FB8A8;display:inline-block} .rp-row div{flex:1;display:flex;flex-direction:column;gap:3px} .rp-row b{font-weight:400;font-size:14.5px} .rp-row small{font:500 10px system-ui;letter-spacing:.09em;text-transform:uppercase;color:#5F5D57} .rp-row em{font:11px system-ui;color:#5F5D57;font-style:normal}"
+      "note": "Title, cleaned excerpt, Template marker, uses, tokens. Draggable between columns."
+    },
+    {
+      "name": "Studio tab",
+      "kind": "tab",
+      "note": "2pt signal rule on the selected tab top edge."
     }
   ],
-  "narrative": {
-    "northStar": "The Annotated Edition",
-    "overview": "A prompt is set like a page of an annotated edition. The text sits on a readable measure, and everything about it (blanks, includes, files, agent commands, record) lives in the margin. Color is one accent for what you act on. Three worlds (Edition, Machined, Quiet) share the structure and change only type, palette, density and one signature move.",
-    "keyCharacteristics": [
-      "Ink on paper, one accent",
-      "Captions carry all metadata",
-      "Index as a table of contents",
-      "Margin as apparatus",
-      "Native controls in every world"
-    ],
-    "rules": [
-      {
-        "name": "One accent",
-        "body": "Only blanks, the caret and the primary action are colored.",
-        "section": "colors"
-      },
-      {
-        "name": "Project color is a key",
-        "body": "Project colors are small squares, never fills or tints.",
-        "section": "colors"
-      },
-      {
-        "name": "Captions carry the apparatus",
-        "body": "Metadata is always a caption; body type is only for content.",
-        "section": "typography"
-      }
-    ],
-    "dos": [
-      "Keep color to one accent plus project keys",
-      "Use native controls",
-      "Check all three worlds and looks"
-    ],
-    "donts": [
-      "No gradients, glows, tinted glass or side stripes",
-      "No eyebrow kickers or pill badges",
-      "No terminal costume",
-      "No snippets in the index"
-    ]
-  }
+  "narrative": "Three designs with three different structures (Console, Board, Studio), one library, one primary action (Copy Prompt), New Prompt always visible, Dark by default. See DESIGN.md."
 }
