@@ -1,0 +1,125 @@
+# Reprise: research, ICP and competitive analysis
+
+*November 2026. Inputs: web research (vendor sites, App Store listings, GitHub, Apple Community threads, comparison articles), the agent ecosystem's on-disk formats (Claude Code / Codex), and a scan of a real power user's local agent history.*
+
+---
+
+## 1. The problem, stated precisely
+
+High-leverage agent work runs on long, carefully written prompts: role preambles, task specs, review checklists, research briefs. Three things are true for heavy agent users:
+
+1. **The same prompts recur with small variations.** Same skeleton, different file, repo, goal or tone.
+2. **Prompts are long.** 2–50k characters is normal. Pasted context makes them longer.
+3. **Prompts are used inside terminals and agents**, not in the tool where they're stored.
+
+Every current solution breaks at least one of these.
+
+### Evidence from a real power user's machine
+Running Reprise's *Harvest* against one heavy user's `~/.claude/history.jsonl` (1,982 entries) and `~/.codex/history.jsonl` (1,075 entries):
+
+| Retyped | Size | Source |
+|---|---|---|
+| ×32 | 49,507 chars | Codex |
+| ×25 | 2,908 chars | Claude Code |
+| ×18 | 1,007 chars | Claude Code + Codex |
+| ×16 | 13,130 chars | Codex |
+| ×9 | 12,561 chars | Codex |
+
+The top item alone is about **1.6 million characters of re-pasting**. Most of the top patterns open with the same role preamble before the task-specific part, which is exactly the *include/preamble* use case. This finding drove three features: **Harvest**, **includes** (`{{> Role}}`), and **templates with remembered values**.
+
+### Evidence from Apple Notes users
+Apple Community threads report notes becoming unusable past about 100–130k characters ("Updated to 18.1.1, but large notes (>130,000 characters) still slow down, it is impossible to work"). The lag predates iOS 18 (a 2023 macOS thread reports splitting notes to reduce lag). The root cause is architectural: rich-text layout of the entire note plus iCloud sync of a single large object. This drove the **TextKit 2 viewport editor + SQLite store** decision and the benchmark target of "a 4 MB prompt must feel like 4 KB".
+Sources: [Apple Community 255765334](https://discussions.apple.com/thread/255765334), [Apple Community 254559867](https://origin-discussions2-us-dr-prz.apple.com/thread/254559867).
+
+---
+
+## 2. ICP
+
+**Primary: the agent-native builder.** A senior or staff engineer, indie hacker or technical founder on macOS who runs 2–6 coding agents daily (Claude Code, Codex CLI, Cursor, OpenCode, Pi, Gemini CLI), often in parallel through tmux, herdr or Ghostty splits.
+
+| Trait | Implication for the product |
+|---|---|
+| Lives in the terminal; keyboard-first | Global hotkey, zero-mouse flow, paste into the frontmost app, CLI |
+| Writes long structured prompts (XML tags, markdown, role preambles) | Real editor with prompt-aware highlighting; includes |
+| Uses several agents | Agent-agnostic output; MCP + Claude and Codex slash commands |
+| Taste-driven: adopts Ghostty, Raycast, Linear, herdr | Native, fast, beautiful; looks like it belongs on macOS 26 |
+| Privacy-aware, distrusts SaaS for IP-laden prompts | Local-first, no account, no telemetry, open source |
+| Shares tooling publicly on X / GitHub | Screenshot-worthy UI, a shareable `cast` command, Harvest stats |
+
+**Secondary:** prompt engineers, AI-heavy PMs and researchers, and content teams using ChatGPT or Claude desktop. They are served by the same app (Quick Panel works in any text field) without being the design center.
+
+**Jobs to be done**
+1. *"When I start a task, give me my best prompt for it in under 2 seconds, with the details filled in."*
+2. *"When I write a great prompt, let me keep it without breaking flow."* (MCP `save_prompt`, ⌘N, CLI `add`)
+3. *"Keep hundreds of prompts organized by client and project, and let me find any of them instantly."*
+4. *"Let my agents use my library directly."* (MCP / slash commands)
+
+---
+
+## 3. Competitive landscape (audited)
+
+| Product | Type | Strengths | Gaps we exploit |
+|---|---|---|---|
+| **Apple Notes** | General notes | Free, already there, iCloud | Lags on large notes; no variables; no agent integration; rich text mangles prompts |
+| **Raycast snippets / AI commands** | Launcher | Great hotkey UX, huge user base | Snippets aren't a library: weak organization, no long-form editor, no includes; Pro paywall for AI features |
+| **Prompttly** ([site](https://prompttly.com/)) | Mac + web + Chrome, freemium | Syncs to `~/.claude/skills` and `~/.codex/skills`; hotkey palette | Closed source, account and cloud model, metered "AI optimizations" and MCP calls; skills-focused rather than a prompt editor |
+| **Promptzy** ([site](https://promptzy.app/)) | Mac app, $5 Pro | Plain `.md` storage, sync to Claude, Cursor, OpenClaw | Free tier capped at 10 prompts / 1 collection; sync is paid; small-library focus |
+| **PromptBox / Promptler / PromptPad** (App Store) | Mac / iOS apps | Templates with `{{vars}}`, iCloud | Generic "prompt manager" positioning; no agent wiring; tiny review bases |
+| **TextExpander / Espanso** | Text expansion | Mature expansion and fill-ins | Built for short snippets; no long-form editor; no agent wiring |
+| **Browser extensions** (AIPRM, Prompt Genius, Toolbox for Claude…) | Chrome | Live inside chat UIs | Useless in terminals; reported data-loss complaints (Prompt Genius ~2.8★) |
+| **OSS Swift prompt managers** (PromptPanel, PromptStash, promptbox, ghuey-prompt) | GitHub | Native, some use GRDB and hotkeys | Low traction (0–few ★); none combine editor + templates + MCP + Harvest + design |
+| **Version-controlled prompt files** (CLAUDE.md, AGENTS.md, `.claude/commands`) | DIY | Git, portable | Per-repo; no search across projects; no fill-in UX; no organization |
+
+Sources: [Prompttly comparison](https://prompttly.com/resources/best-prompt-organizer-mac), [Promptzy roundup](https://promptzy.app/blog/best-ai-prompt-managers-mac-2026), [Promptzy pricing](https://promptzy.app/), [Promptler](https://apps.apple.com/us/app/promptler-ai-prompt-manager/id6670718658), [PromptPad](https://apps.apple.com/us/app/promptpad-ai-prompt-manager/id6748589385), [Chrome extension roundup](https://prompt-architects.com/blog/11-best-prompt-manager-2026), [PromptPanel](https://github.com/qilaidev/PromptPanel), [PromptStash](https://github.com/karmanverma/PromptStash), [promptbox](https://github.com/DouglasPrado/promptbox), [Claude Code slash commands docs](https://code.claude.com/docs/en/slash-commands).
+
+### Diagnosis
+The market is **crowded and undifferentiated at the bottom**: dozens of "prompt managers" with `{{variables}}`, folders and a hotkey. Nobody owns the intersection of:
+
+1. **Agent-native wiring**: MCP (read *and write*), slash-command publishing, a CLI.
+2. **Serious long-form editing**: multi-MB prompts, prompt-aware highlighting, versions.
+3. **Taste**: a first-class macOS 26 Liquid Glass app rather than a utility window.
+4. **Open source + local-first**, which this ICP strongly prefers for prompts containing IP.
+5. **A built-in "aha" moment** (Harvest) that proves value on first launch using the user's own data.
+
+Each competitor has one or two of these. Reprise ships all five on day one.
+
+---
+
+## 4. Positioning
+
+**Category:** a *prompt studio* for agent-native developers (not a "prompt manager").
+
+**One-liner:** *Reprise: prompts you play again.*
+
+**Elevator pitch:** Reprise is a native, open-source Mac app where your best prompts live as templates. ⌥⌘P from any terminal, fill in the blanks, and it's pasted into Claude Code or Codex. Your agents can search and save to it over MCP. It handles 4 MB prompts without a stutter, and it looks like Apple built it.
+
+**Why the name:** a *reprise* is a returning musical theme with variations, which is literally a template. It's short, pronounceable worldwide, unclaimed in the dev-tools and AI space (GitHub shows no conflicting dev tool; "cantrip" and "rote" were rejected because active projects in the agent/notes space already use them), and it carries a visual identity: the musical **repeat sign** (𝄇), which became the logo.
+
+**Moat strategy ("monopoly" path)**
+1. **Own the standard.** The template syntax (`{{x = default}}`, `{{x: a | b}}`, `{{> include}}`) is plain text and documented. If shared prompt packs adopt it, Reprise becomes the reference renderer, and the CLI and MCP make it usable anywhere.
+2. **Data gravity without lock-in.** People move their whole library in through Harvest and Markdown import; one-click Markdown export builds trust.
+3. **Distribution through agents.** Every `claude mcp add reprise` install puts Reprise inside the user's daily loop. `save_prompt` means agents *grow* the library.
+4. **Community packs.** (Roadmap) shareable `.reprise` packs from tastemakers: "Staff Engineer review kit", "Security audit kit". Each pack is a growth loop.
+5. **Open source.** Competitors charge $5–$10/month; free plus MIT plus better makes the paid closed apps' pitch hard to defend.
+
+---
+
+## 5. Feature set: research → decision
+
+| Research signal | Feature shipped |
+|---|---|
+| Notes lags on 100k+ char notes | TextKit 2 editor, incremental highlighting, chunked first paint, SQLite store; benchmarked |
+| Same preamble re-pasted dozens of times | `{{> include}}` composition + Harvest |
+| "Only certain details change" | Templates: defaults, choices, built-ins, remembered values, live preview |
+| Organize by projects and areas, named and colored | Spaces → Projects → Prompts; required names; OKLCH random color pool + picker + "shades near this one" |
+| Prompts are used in terminals | Global hotkey glass panel, paste into frontmost app, CLI `cast -c` |
+| Agents should reach the library | MCP (prompts + tools incl. `save_prompt`), Claude/Codex slash-command publishing |
+| Images and links pasted into agents | Attachments copied into the library; absolute paths and URLs appended on use |
+| Rich-text mangling (smart quotes) | Plain-text storage, smart substitutions off, prompt-aware highlighting (XML tags) |
+| Fear of data loss (extension reviews) | Autosave, 50-version history, WAL, Markdown export |
+| Liquid Glass / modern Mac fit | SwiftUI Liquid Glass throughout + three looks (Liquid, Tinted, Ink) |
+
+### Deliberately *not* built (yet)
+- **Cloud accounts / sync service.** Conflicts with local-first; `REPRISE_HOME` on an iCloud folder covers the simple case.
+- **In-app LLM "prompt optimizer".** Commodity and metered by competitors; agents can already do this through MCP.
+- **Prompt marketplace.** Comes after community packs prove demand.

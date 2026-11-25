@@ -1,0 +1,13 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app + CLI
+        run: swift build -c release
+      - name: Tests
+        run: swift test
+      - name: Checks & benchmark
+        run: swift run -c release reprise-bench 20000
