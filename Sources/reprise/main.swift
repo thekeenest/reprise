@@ -3,7 +3,7 @@ import RepriseCore
 
 // reprise — the command-line half of Reprise. Same library as the app (SQLite, WAL).
 
-let version = "0.1.0"
+let version = "0.2.0"
 var args = Array(CommandLine.arguments.dropFirst())
 let isTTY = isatty(STDOUT_FILENO) == 1
 

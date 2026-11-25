@@ -11,30 +11,31 @@ struct ShadePicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Color").font(.headline)
+                Caps("Color", color: Folio.ink, size: 11)
                 Spacer()
                 Button {
                     let h = Palette.random(); onPick(h); regenerate()
-                } label: { Label("Surprise me", systemImage: "dice.fill") }
-                .buttonStyle(.glass)
+                } label: { Label("Random", systemImage: "dice") }
+                .controlSize(.small)
             }
             grid(Palette.curated)
             Divider()
             HStack {
-                Text("Shades near this one").font(.caption).foregroundStyle(.secondary)
+                Caps("Shades near this one")
                 Spacer()
-                Button { regenerate() } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.plain)
+                Button { regenerate() } label: { Image(systemName: "arrow.clockwise").foregroundStyle(Folio.slate) }.buttonStyle(.plain).help("More shades")
             }
             grid(pool)
             HStack {
                 ColorPicker("Custom", selection: $custom, supportsOpacity: false)
                     .onChange(of: custom) { _, c in onPick(c.hexString) }
                 Spacer()
-                Text(hex).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                Text(hex).font(.system(size: 11, design: .monospaced)).foregroundStyle(Folio.slate).textSelection(.enabled)
             }
         }
         .padding(16)
         .frame(width: 300)
+        .background(Folio.paper)
         .onAppear { custom = Color(hex: hex); regenerate() }
     }
 
@@ -47,9 +48,9 @@ struct ShadePicker: View {
         LazyVGrid(columns: Array(repeating: GridItem(.fixed(26), spacing: 8), count: 8), spacing: 8) {
             ForEach(colors, id: \.self) { c in
                 Button { onPick(c) } label: {
-                    Circle().fill(Color(hex: c).gradient)
-                        .frame(width: 24, height: 24)
-                        .overlay(Circle().strokeBorder(.primary.opacity(c == hex ? 0.9 : 0), lineWidth: 2).padding(-3))
+                    Rectangle().fill(Color(hex: c))
+                        .frame(width: 22, height: 22)
+                        .overlay(Rectangle().strokeBorder(Folio.ink.opacity(c == hex ? 1 : 0), lineWidth: 1).padding(-3))
                 }
                 .buttonStyle(.plain)
             }
@@ -67,9 +68,9 @@ struct NamingSheet: View {
     @State private var icon = "square.stack.3d.up.fill"
     @State private var showColors = false
 
-    static let icons = ["square.stack.3d.up.fill", "hammer.fill", "briefcase.fill", "sparkle.magnifyingglass", "brain.head.profile",
-                        "chevron.left.forwardslash.chevron.right", "paintbrush.pointed.fill", "megaphone.fill", "chart.line.uptrend.xyaxis",
-                        "graduationcap.fill", "person.crop.circle.fill", "shippingbox.fill", "bolt.fill", "leaf.fill", "globe", "lock.shield.fill"]
+    static let icons = ["square.stack.3d.up", "hammer", "briefcase", "sparkle.magnifyingglass", "brain.head.profile",
+                        "chevron.left.forwardslash.chevron.right", "paintbrush.pointed", "megaphone", "chart.line.uptrend.xyaxis",
+                        "graduationcap", "person.crop.circle", "shippingbox", "bolt", "leaf", "globe", "lock.shield"]
 
     var isSpace: Bool {
         switch request.kind { case .newSpace, .editSpace: return true; default: return false }
@@ -86,20 +87,11 @@ struct NamingSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 12) {
-                Button { showColors.toggle() } label: {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(hex: color).gradient).frame(width: 44, height: 44)
-                        if isSpace { Image(systemName: icon).foregroundStyle(.white).font(.title3) }
-                    }
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showColors) { ShadePicker(hex: color) { color = $0 } }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(heading).font(.title2.bold())
-                    Text(isSpace ? "An area of your work — clients, research, open source…" : "A named home for related prompts")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(heading).font(.text(22)).foregroundStyle(Folio.ink)
+                Text(isSpace ? "An area of your work: a client, research, open source." : "A named home for related prompts.")
+                    .font(.system(size: 12.5)).foregroundStyle(Folio.slate)
+                Hairline().padding(.top, 6)
             }
 
             TextField(isSpace ? "Space name" : "Project name", text: $name)
@@ -107,12 +99,18 @@ struct NamingSheet: View {
                 .controlSize(.large)
                 .onSubmit(save)
 
-            HStack {
-                Text("Color").foregroundStyle(.secondary)
-                ForEach(Palette.curated.prefix(10), id: \.self) { c in
-                    Button { color = c } label: { ColorDot(hex: c, size: 16) }.buttonStyle(.plain)
+            HStack(spacing: 8) {
+                Caps("Color").frame(width: 48, alignment: .leading)
+                Button { showColors.toggle() } label: {
+                    ColorKey(hex: color, size: 16).overlay(Rectangle().strokeBorder(Folio.ink, lineWidth: 1).padding(-3))
                 }
-                Button { color = Palette.random() } label: { Image(systemName: "dice.fill") }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showColors) { ShadePicker(hex: color) { color = $0 } }
+                .help("Choose from the shade pool")
+                ForEach(Palette.curated.prefix(9), id: \.self) { c in
+                    Button { color = c } label: { ColorKey(hex: c, size: 14) }.buttonStyle(.plain)
+                }
+                Button { color = Palette.random() } label: { Image(systemName: "dice").foregroundStyle(Folio.slate) }
                     .buttonStyle(.plain)
                     .help("Random shade")
             }
@@ -122,7 +120,8 @@ struct NamingSheet: View {
                     ForEach(Self.icons, id: \.self) { i in
                         Button { icon = i } label: {
                             Image(systemName: i).frame(width: 28, height: 28)
-                                .background(icon == i ? Color(hex: color).opacity(0.25) : .clear, in: RoundedRectangle(cornerRadius: 7))
+                                .foregroundStyle(icon == i ? Folio.ink : Folio.slate)
+                                .overlay(Rectangle().strokeBorder(icon == i ? Folio.ink : .clear, lineWidth: 1))
                         }
                         .buttonStyle(.plain)
                     }
@@ -133,14 +132,14 @@ struct NamingSheet: View {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(isNew ? "Create" : "Save", action: save)
-                    .buttonStyle(.glassProminent)
-                    .tint(Color(hex: color))
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
         .padding(24)
         .frame(width: 420)
+        .background(Folio.paper)
         .onAppear {
             switch request.kind {
             case .editSpace(let s): name = s.name; color = s.color; icon = s.icon
@@ -180,13 +179,18 @@ struct FillSheet: View {
         let vars = model.store.variables(prompt)
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 10) {
-                    ColorDot(hex: prompt.color, size: 14)
-                    Text(prompt.title).font(.title3.bold()).lineLimit(1)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(prompt.title).font(.text(20)).foregroundStyle(Folio.ink).lineLimit(1)
+                    Hairline()
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        ForEach(vars) { v in VariableField(variable: v, value: binding(v), focused: $focused) }
+                        ForEach(Array(vars.enumerated()), id: \.element.id) { i, v in
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                BlankKey(index: i)
+                                VariableField(variable: v, value: binding(v), focused: $focused)
+                            }
+                        }
                     }
                     .padding(.vertical, 4)
                 }
@@ -196,9 +200,8 @@ struct FillSheet: View {
                     Spacer()
                     Button {
                         model.copy(prompt, values: values); dismiss()
-                    } label: { Label("Copy", systemImage: "doc.on.doc.fill") }
-                    .buttonStyle(.glassProminent)
-                    .tint(Color(hex: prompt.color))
+                    } label: { Text("Copy filled  ⌘↩") }
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.return, modifiers: .command)
                 }
             }
@@ -206,24 +209,32 @@ struct FillSheet: View {
             .frame(width: 340)
             .clipped()
 
-            Divider()
+            Hairline(vertical: true)
 
-            ScrollView {
-                Text(preview)
-                    .font(.system(.callout, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(22)
-                    .padding(.top, 26)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Caps("Preview")
+                    Spacer()
+                    Caps("\(Template.estimateTokens(preview).formatted()) tokens")
+                }
+                .monospacedDigit()
+                .padding(.horizontal, 24)
+                .frame(height: 40)
+                Hairline()
+                ScrollView {
+                    Text(preview)
+                        .font(.text(13.5))
+                        .lineSpacing(4)
+                        .foregroundStyle(Folio.ink)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(24)
+                }
             }
-            .background(Color(hex: prompt.color).opacity(0.05))
-            .overlay(alignment: .topTrailing) {
-                Text("~\(Template.estimateTokens(preview).formatted()) tokens")
-                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                    .padding(8).glassEffect(.regular, in: .capsule).padding(10)
-            }
+            .background(Folio.paperDeep)
         }
-        .frame(width: 860, height: 540)
+        .frame(width: 880, height: 560)
+        .background(Folio.paper)
         .onAppear {
             values = Prefs.lastValues(for: prompt.id)
             focused = vars.first?.name
@@ -246,7 +257,7 @@ struct VariableField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(variable.name).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(variable.name).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Folio.slate)
             if variable.isChoice {
                 let picker = Picker("", selection: Binding(get: { value.isEmpty ? variable.defaultValue : value }, set: { value = $0 })) {
                     ForEach(variable.options, id: \.self) { Text($0).tag($0) }
@@ -275,23 +286,24 @@ struct HistorySheet: View {
         NavigationSplitView {
             List(versions, selection: $selected) { v in
                 VStack(alignment: .leading) {
-                    Text(v.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.body.weight(.medium))
-                    Text("\(v.body.count.formatted()) chars").font(.caption).foregroundStyle(.secondary)
+                    Text(v.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.text(13.5))
+                    Caps("\(v.body.count.formatted()) characters", size: 10).monospacedDigit()
                 }
             }
-            .overlay { if versions.isEmpty { Text("No earlier versions yet").foregroundStyle(.secondary) } }
+            .overlay { if versions.isEmpty { Text("No earlier versions yet. One is kept each time you leave an edited prompt.").font(.system(size: 12)).foregroundStyle(Folio.slate).padding() } }
             .navigationSplitViewColumnWidth(220)
         } detail: {
             if let v = versions.first(where: { $0.id == selected }) {
                 ScrollView {
-                    Text(v.body).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading).padding(20)
+                    Text(v.body).font(.text(13.5)).lineSpacing(4).foregroundStyle(Folio.ink).textSelection(.enabled)
+                        .frame(maxWidth: 640, alignment: .leading).padding(28)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .toolbar {
-                    Button("Restore This Version") { model.restore(v) }.buttonStyle(.glassProminent).tint(Color(hex: prompt.color))
+                    Button("Restore This Version") { model.restore(v) }.buttonStyle(.borderedProminent)
                 }
             } else {
-                Text("Select a version").foregroundStyle(.secondary)
+                Text("Select a version").foregroundStyle(Folio.slate)
             }
         }
         .toolbar { Button("Done") { dismiss() } }
@@ -313,9 +325,9 @@ struct HarvestView: View {
         VStack(spacing: 0) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Harvest", systemImage: "leaf.fill").font(.title2.bold()).foregroundStyle(.green)
-                    Text("Prompts you keep retyping in Claude Code and Codex, ranked by how much retyping they cost you. Read locally, never uploaded.")
-                        .font(.callout).foregroundStyle(.secondary)
+                    Text("Harvest").font(.text(24)).foregroundStyle(Folio.ink)
+                    Text("Prompts you keep retyping in Claude Code and Codex, ranked by how much retyping they cost you. Read on this Mac, never uploaded.")
+                        .font(.system(size: 12.5)).foregroundStyle(Folio.slate)
                 }
                 Spacer()
             }
@@ -328,11 +340,12 @@ struct HarvestView: View {
                             .labelsHidden()
                             .toggleStyle(.checkbox)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(c.suggestedTitle).font(.body.weight(.semibold)).lineLimit(1)
-                            HStack(spacing: 6) {
-                                Badge(text: "×\(c.count)", icon: "arrow.trianglehead.2.clockwise", color: c.count > 2 ? .orange : .secondary)
-                                Text("\(c.text.count.formatted()) chars · \(c.sources.sorted().joined(separator: ", "))")
-                                    .font(.caption).foregroundStyle(.secondary)
+                            Text(c.suggestedTitle).font(.text(14)).foregroundStyle(Folio.ink).lineLimit(1)
+                            HStack(spacing: 0) {
+                                Text("\(c.count)× ").font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                    .foregroundStyle(c.count > 2 ? Folio.rubric : Folio.slate)
+                                Caps("· \(c.text.count.formatted()) characters · \(c.sources.sorted().joined(separator: ", "))", size: 10)
+                                    .monospacedDigit()
                             }
                         }
                     }
@@ -342,12 +355,15 @@ struct HarvestView: View {
 
                 ScrollView {
                     Text(candidates.first(where: { $0.key == focus })?.text ?? "Select a prompt to preview it")
-                        .font(.system(.callout, design: .monospaced))
+                        .font(.text(13))
+                        .lineSpacing(3)
+                        .foregroundStyle(Folio.ink)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(18)
                 }
                 .frame(minWidth: 360)
+                .background(Folio.paperDeep)
             }
             .overlay { if loading { ProgressView("Reading your agent history…") } else if candidates.isEmpty { Text("No history found in ~/.claude or ~/.codex").foregroundStyle(.secondary) } }
 
@@ -364,13 +380,13 @@ struct HarvestView: View {
                     model.importHarvest(candidates.filter { picked.contains($0.key) }, projectID: projectID)
                     dismiss()
                 }
-                .buttonStyle(.glassProminent)
-                .tint(.green)
+                .buttonStyle(.borderedProminent)
                 .disabled(picked.isEmpty)
             }
             .padding(16)
         }
         .frame(width: 920, height: 620)
+        .background(Folio.paper)
         .task {
             projectID = model.targetProjectID
             let found = await Task.detached(priority: .userInitiated) { Harvest.scan() }.value

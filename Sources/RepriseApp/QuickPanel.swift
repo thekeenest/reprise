@@ -9,6 +9,7 @@ final class QuickPanelController {
     static let shared = QuickPanelController()
     private var panel: QuickPanel?
     private var hotKey: HotKey?
+    private var builtFor: World?
 
     func registerHotKey() {
         hotKey?.invalidate()
@@ -22,7 +23,9 @@ final class QuickPanelController {
 
     @MainActor
     func show() {
+        if panel != nil, builtFor != World.current { panel?.orderOut(nil); panel = nil }
         if panel == nil {
+            builtFor = World.current
             let p = QuickPanel(contentRect: NSRect(x: 0, y: 0, width: 760, height: 470))
             let host = NSHostingView(rootView: QuickPanelView(close: { [weak self] in self?.hide() }).environment(AppModel.shared))
             host.sizingOptions = []
@@ -83,7 +86,7 @@ final class QuickPanel: NSPanel {
 
 struct QuickPanelView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("look") private var look: Look = .liquid
+    @LookSetting private var look
     var close: () -> Void
 
     @State private var query = ""
@@ -100,18 +103,25 @@ struct QuickPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchBar
-            Divider().opacity(0.5)
+            Hairline()
             HStack(spacing: 0) {
                 if let filling { fillForm(filling) } else { resultList }
-                Divider().opacity(0.5)
+                Hairline(vertical: true)
                 previewPane
             }
+            Hairline()
             footer
         }
         .frame(width: 760, height: 470)
-        .background { if look == .ink { Color(white: 0.06).opacity(0.96) } }
-        .surface(look, tint: Color(hex: selected?.color ?? "#7A5CFA"), radius: 26)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .foregroundStyle(Folio.ink)
+        .background {
+            if look != .vellum { Folio.paper }
+        }
+        .modifier(PanelMaterial(glass: look == .vellum))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
+        .tint(Folio.ink)
+        .preferredColorScheme(look.scheme)
         .onAppear(perform: reset)
         .onReceive(NotificationCenter.default.publisher(for: .quickPanelWillShow)) { _ in reset() }
         .onChange(of: query) { search() }
@@ -125,18 +135,17 @@ struct QuickPanelView: View {
 
     private var searchBar: some View {
         HStack(spacing: 12) {
-            RepriseMark(size: 22)
+            RepriseMark(size: 20)
             if let filling {
-                HStack(spacing: 6) {
-                    ColorDot(hex: filling.color, size: 9)
-                    Text(filling.title).font(.title3.weight(.semibold)).lineLimit(1)
-                    Text("— fill the blanks, ↩ to use").foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(filling.title).font(.text(20)).lineLimit(1)
+                    Caps("fill the blanks, ↩ to use")
                 }
                 Spacer()
             } else {
-                TextField("Search prompts…", text: $query)
+                TextField("Find a prompt", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 22, weight: .regular))
+                    .font(.text(21))
                     .focused($focus, equals: .search)
                     .onSubmit { activate(paste: Prefs.autoPaste) }
             }
@@ -148,29 +157,31 @@ struct QuickPanelView: View {
     private var resultList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 2) {
+                LazyVStack(spacing: 0) {
                     ForEach(Array(results.enumerated()), id: \.element.id) { i, r in
                         QuickRow(item: r, selected: i == index, project: model.project(r.projectID)?.name ?? "")
                             .id(r.id)
                             .onTapGesture { index = i; activate(paste: Prefs.autoPaste) }
                     }
                 }
-                .padding(8)
+                .padding(.vertical, 6)
             }
             .onChange(of: index) { _, i in
                 if results.indices.contains(i) { proxy.scrollTo(results[i].id, anchor: nil) }
             }
         }
         .frame(width: 330)
-        .overlay { if results.isEmpty { Text(query.isEmpty ? "Your library is empty" : "No matches").foregroundStyle(.secondary) } }
+        .overlay { if results.isEmpty { Text(query.isEmpty ? "Your library is empty." : "Nothing matches.").font(.text(14)).foregroundStyle(Folio.slate) } }
     }
 
     private func fillForm(_ p: Prompt) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(model.store.variables(p)) { v in
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(Array(model.store.variables(p).enumerated()), id: \.element.id) { i, v in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    BlankKey(index: i)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(v.name).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text(v.name).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Folio.slate)
                         if v.isChoice {
                             Picker("", selection: Binding(get: { values[v.name] ?? v.defaultValue }, set: { values[v.name] = $0 })) {
                                 ForEach(v.options, id: \.self) { Text($0).tag($0) }
@@ -185,20 +196,22 @@ struct QuickPanelView: View {
                                 .onSubmit { advance(from: v.name, in: p) }
                         }
                     }
+                    }
                 }
             }
-            .padding(16)
+            .padding(18)
         }
         .frame(width: 330)
     }
 
     private var previewPane: some View {
         ScrollView {
-            Text(previewText)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.primary.opacity(0.85))
+            Text(Self.marked(previewText))
+                .font(.text(12.5))
+                .lineSpacing(3)
+                .foregroundStyle(Folio.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
+                .padding(18)
         }
         .frame(maxWidth: .infinity)
     }
@@ -210,12 +223,11 @@ struct QuickPanelView: View {
             hint("⌘O", "Open in Reprise")
             hint("esc", filling == nil ? "Close" : "Back")
             Spacer()
-            if let s = selected { Text("~\(Template.estimateTokens(length: s.length).formatted()) tokens").foregroundStyle(.secondary) }
+            if let s = selected { Caps("\(Template.estimateTokens(length: s.length).formatted()) tokens").monospacedDigit() }
         }
-        .font(.caption)
+        .font(.system(size: 11.5))
         .padding(.horizontal, 18)
-        .frame(height: 34)
-        .background(.black.opacity(look == .ink ? 0.2 : 0.04))
+        .frame(height: 36)
         .background {
             Group {
                 Button("") { activate(paste: false) }.keyboardShortcut(.return, modifiers: .command)
@@ -226,12 +238,26 @@ struct QuickPanelView: View {
     }
 
     private func hint(_ key: String, _ label: String) -> some View {
-        HStack(spacing: 5) {
-            Text(key).font(.caption.monospaced().weight(.semibold))
-                .padding(.horizontal, 5).padding(.vertical, 1)
-                .background(.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
-            Text(label).foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            KeyCap(key: key)
+            Text(label).foregroundStyle(Folio.slate)
         }
+    }
+
+    /// Blanks in rubric, as on the page.
+    static func marked(_ text: String) -> AttributedString {
+        var out = AttributedString(text)
+        guard text.contains("{{") else { return out }
+        for r in Template.placeholderRanges(in: text) {
+            guard let sr = Range(r, in: text),
+                  let lo = AttributedString.Index(sr.lowerBound, within: out),
+                  let hi = AttributedString.Index(sr.upperBound, within: out) else { continue }
+            let inner = text[sr]
+            let blank = !(inner.hasPrefix("{{>") || inner.contains("{{@"))
+            out[lo..<hi].foregroundColor = blank ? Folio.rubric : Folio.slate
+            out[lo..<hi].font = .system(size: 11, weight: .semibold, design: .monospaced)
+        }
+        return out
     }
 
     private var previewText: String {
@@ -320,30 +346,32 @@ struct QuickRow: View {
     let project: String
 
     var body: some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(Color(hex: item.color).gradient)
-                .frame(width: 4, height: 30)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 5) {
-                    Text(item.title).font(.body.weight(.medium)).lineLimit(1)
-                    if item.isTemplate { Image(systemName: "curlybraces").font(.caption2).foregroundStyle(Color(hex: item.color)) }
-                    if item.pinned { Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.orange) }
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            ColorKey(hex: item.color, size: 6)
+                .frame(width: 20, alignment: .leading)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(item.title).font(.text(14.5, weight: selected ? .medium : Folio.style.entryWeight)).lineLimit(1)
+                        .foregroundStyle(selected && Folio.style.selection == .accentTitle ? Folio.rubric : Folio.ink)
+                    if item.pinned { Image(systemName: "pin.fill").font(.system(size: 8.5)).foregroundStyle(Folio.slate) }
+                    Spacer(minLength: 6)
+                    if item.isTemplate { Caps("template", size: 10) }
                 }
-                Text(project).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-            Spacer()
-            if item.useCount > 0 { Text("×\(item.useCount)").font(.caption.monospacedDigit()).foregroundStyle(.tertiary) }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background {
-            if selected {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(hex: item.color).opacity(0.22))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color(hex: item.color).opacity(0.35), lineWidth: 0.5))
+                Caps(project + (item.useCount > 0 ? " · played \(item.useCount)×" : ""), size: 10).lineLimit(1)
             }
         }
+        .padding(.leading, 14)
+        .padding(.trailing, 14)
+        .padding(.vertical, 8)
+        .background { SelectionBackground(selected: selected, active: true, hovering: false) }
         .contentShape(Rectangle())
+    }
+}
+
+struct PanelMaterial: ViewModifier {
+    var glass: Bool
+    func body(content: Content) -> some View {
+        if glass { content.glassEffect(.regular.tint(Folio.paper.opacity(0.3)), in: .rect(cornerRadius: 14)) }
+        else { content }
     }
 }

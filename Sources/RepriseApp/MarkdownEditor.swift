@@ -10,8 +10,8 @@ struct MarkdownEditor: NSViewRepresentable {
     let initialText: String
     var font: EditorFont
     var fontSize: CGFloat
-    var accent: NSColor
-    var look: Look
+    var inset: CGFloat
+    var measure: CGFloat
     var onChange: (String) -> Void
     var onPasteImage: (Data, String) -> Void
     var onDropFiles: ([URL]) -> Void
@@ -24,7 +24,7 @@ struct MarkdownEditor: NSViewRepresentable {
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.scrollerStyle = .overlay
-        scroll.contentInsets = NSEdgeInsets(top: 8, left: 0, bottom: 80, right: 0)
+        scroll.contentInsets = NSEdgeInsets(top: 4, left: 0, bottom: 60, right: 0)
 
         let tv = PromptTextView(usingTextLayoutManager: true)
         tv.coordinator = context.coordinator
@@ -41,19 +41,22 @@ struct MarkdownEditor: NSViewRepresentable {
         tv.usesFindBar = true
         tv.isIncrementalSearchingEnabled = true
         tv.drawsBackground = false
-        tv.textContainerInset = NSSize(width: 28, height: 10)
+        tv.leftInset = inset
+        tv.measure = measure
+        tv.textContainerInset = NSSize(width: 0, height: 6)
         tv.isVerticallyResizable = true
         tv.isHorizontallyResizable = false
         tv.autoresizingMask = [.width]
-        tv.textContainer?.widthTracksTextView = true
+        tv.textContainer?.widthTracksTextView = false
         tv.textContainer?.lineFragmentPadding = 0
         tv.minSize = NSSize(width: 0, height: 0)
         tv.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        tv.insertionPointColor = accent
+        tv.insertionPointColor = Folio.nsRubric
+        tv.selectedTextAttributes = [.backgroundColor: Folio.nsSelection]
 
         let c = context.coordinator
         c.textView = tv
-        c.highlighter = Highlighter(font: font, size: fontSize, accent: accent, look: look)
+        c.highlighter = Highlighter(font: font, size: fontSize)
         tv.typingAttributes = c.highlighter.base
         tv.textStorage?.delegate = c
         tv.string = initialText
@@ -69,17 +72,19 @@ struct MarkdownEditor: NSViewRepresentable {
         let c = context.coordinator
         c.parent = self
         guard let tv = c.textView else { return }
-        if c.highlighter.needsRebuild(font: font, size: fontSize, accent: accent, look: look) {
-            c.highlighter = Highlighter(font: font, size: fontSize, accent: accent, look: look)
+        if tv.measure != measure || tv.leftInset != inset {
+            tv.measure = measure; tv.leftInset = inset; tv.relayoutMeasure()
+        }
+        if c.highlighter.needsRebuild(font: font, size: fontSize) {
+            c.highlighter = Highlighter(font: font, size: fontSize)
             tv.typingAttributes = c.highlighter.base
-            tv.insertionPointColor = accent
             c.highlighter.fullPass(tv.textStorage!)
         }
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var parent: MarkdownEditor
-        weak var textView: NSTextView?
+        weak var textView: PromptTextView?
         var highlighter: Highlighter!
 
         init(_ parent: MarkdownEditor) { self.parent = parent }
@@ -98,6 +103,25 @@ struct MarkdownEditor: NSViewRepresentable {
 
 final class PromptTextView: NSTextView {
     weak var coordinator: MarkdownEditor.Coordinator?
+    /// The text sits at a book measure, left-aligned to the page's inset, not stretched across the window.
+    var leftInset: CGFloat = 44
+    var measure: CGFloat = 660
+
+    override var textContainerOrigin: NSPoint {
+        NSPoint(x: leftInset, y: textContainerInset.height)
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        relayoutMeasure()
+    }
+
+    func relayoutMeasure() {
+        let w = max(120, min(measure, bounds.width - leftInset - 28))
+        if let tc = textContainer, abs(tc.size.width - w) > 0.5 {
+            tc.size = NSSize(width: w, height: CGFloat.greatestFiniteMagnitude)
+        }
+    }
 
     override func paste(_ sender: Any?) {
         let pb = NSPasteboard.general
@@ -132,25 +156,22 @@ final class PromptTextView: NSTextView {
     }
 }
 
-/// Markdown + prompt-engineering aware highlighter.
-/// Paints: headings, emphasis, inline/fenced code, lists, quotes, links, XML-style prompt tags
-/// (<task>, <context>…), and template placeholders as tinted pills.
+/// Markdown + prompt-engineering aware highlighter, in the edition's inks.
+/// Structure is carried by weight and slate; rubric is reserved for blanks, the things you fill in.
 final class Highlighter {
     let base: [NSAttributedString.Key: Any]
     private let fontKind: EditorFont
     private let size: CGFloat
-    private let accent: NSColor
-    private let look: Look
     private let mono: NSFont
+    private let monoStrong: NSFont
     private let bodyFont: NSFont
     private let boldFont: NSFont
     private let italicFont: NSFont
-    private let text = NSColor.labelColor
-    private let secondary = NSColor.secondaryLabelColor
-    private let tertiary = NSColor.tertiaryLabelColor
-    private let tagColor: NSColor
-    private let linkColor = NSColor.systemBlue
-    private let codeBG: NSColor
+    private let text = Folio.nsInk
+    private let secondary = Folio.nsSlate
+    private let tertiary = Folio.nsAsh
+    private let rubric = Folio.nsRubric
+    private let codeBG = Folio.nsWash
     private var fences: [NSRange] = []
 
     private static let rx: (String) -> NSRegularExpression = { try! NSRegularExpression(pattern: $0, options: [.anchorsMatchLines]) }
@@ -165,26 +186,22 @@ final class Highlighter {
     private static let xmlTag = rx(#"</?[A-Za-z][\w\-]*(?:\s[^<>\n]*)?/?>"#)
     private static let rule = rx(#"^[ \t]*([-*_])([ \t]*\1){2,}[ \t]*$"#)
 
-    init(font: EditorFont, size: CGFloat, accent: NSColor, look: Look) {
+    init(font: EditorFont, size: CGFloat) {
         self.fontKind = font
         self.size = size
-        self.accent = accent
-        self.look = look
         bodyFont = font.nsFont(size: size)
         boldFont = font.nsFont(size: size, weight: .semibold)
-        let ital = NSFontManager.shared.convert(bodyFont, toHaveTrait: .italicFontMask)
-        italicFont = ital
-        mono = .monospacedSystemFont(ofSize: size * 0.94, weight: .regular)
-        tagColor = NSColor.systemPink.blended(withFraction: 0.25, of: .systemPurple) ?? .systemPink
-        codeBG = NSColor.labelColor.withAlphaComponent(0.06)
+        italicFont = NSFontManager.shared.convert(bodyFont, toHaveTrait: .italicFontMask)
+        mono = .monospacedSystemFont(ofSize: size * 0.84, weight: .regular)
+        monoStrong = .monospacedSystemFont(ofSize: size * 0.84, weight: .semibold)
         let para = NSMutableParagraphStyle()
-        para.lineHeightMultiple = font == .mono ? 1.22 : 1.28
-        para.paragraphSpacing = size * 0.35
-        base = [.font: bodyFont, .foregroundColor: text, .paragraphStyle: para, .kern: font == .mono ? 0 : 0.1]
+        para.lineHeightMultiple = font == .mono ? 1.3 : World.current.style.lineHeight
+        para.paragraphSpacing = size * 0.45
+        base = [.font: bodyFont, .foregroundColor: text, .paragraphStyle: para]
     }
 
-    func needsRebuild(font: EditorFont, size: CGFloat, accent: NSColor, look: Look) -> Bool {
-        font != fontKind || size != self.size || !accent.isEqual(self.accent) || look != self.look
+    func needsRebuild(font: EditorFont, size: CGFloat) -> Bool {
+        font != fontKind || size != self.size
     }
 
     /// Huge documents are painted in paragraph-aligned chunks across run-loop turns,
@@ -261,16 +278,16 @@ final class Highlighter {
 
         each(Highlighter.heading) { m in
             let level = m.range(at: 1).length
-            let scale: CGFloat = [1.55, 1.32, 1.16, 1.06, 1.0, 1.0][min(level, 6) - 1]
-            s.addAttributes([.font: fontKind.nsFont(size: size * scale, weight: .bold)], range: m.range)
-            s.addAttribute(.foregroundColor, value: accent.withAlphaComponent(0.85), range: m.range(at: 1))
+            let scale: CGFloat = [1.4, 1.22, 1.1, 1.0, 1.0, 1.0][min(level, 6) - 1]
+            s.addAttributes([.font: fontKind.nsFont(size: size * scale, weight: .semibold)], range: m.range)
+            s.addAttribute(.foregroundColor, value: tertiary, range: m.range(at: 1))
         }
         each(Highlighter.rule) { m in s.addAttribute(.foregroundColor, value: tertiary, range: m.range) }
         each(Highlighter.quote) { m in
             s.addAttributes([.foregroundColor: secondary, .font: italicFont], range: m.range)
         }
-        each(Highlighter.list) { m in s.addAttributes([.foregroundColor: accent, .font: boldFont], range: m.range(at: 1)) }
-        each(Highlighter.checkbox) { m in s.addAttribute(.foregroundColor, value: accent, range: m.range) }
+        each(Highlighter.list) { m in s.addAttributes([.foregroundColor: secondary], range: m.range(at: 1)) }
+        each(Highlighter.checkbox) { m in s.addAttribute(.foregroundColor, value: secondary, range: m.range) }
         each(Highlighter.bold) { m in
             s.addAttribute(.font, value: boldFont, range: m.range)
             let d = m.range(at: 1).length
@@ -279,20 +296,20 @@ final class Highlighter {
         }
         each(Highlighter.italic) { m in s.addAttribute(.font, value: italicFont, range: m.range) }
         each(Highlighter.xmlTag) { m in
-            s.addAttributes([.foregroundColor: tagColor, .font: mono], range: m.range)
+            s.addAttributes([.foregroundColor: secondary, .font: mono], range: m.range)
         }
         each(Highlighter.link) { m in
-            s.addAttributes([.foregroundColor: linkColor, .underlineStyle: NSUnderlineStyle.single.rawValue,
-                             .underlineColor: linkColor.withAlphaComponent(0.35)], range: m.range)
+            s.addAttributes([.foregroundColor: secondary, .underlineStyle: NSUnderlineStyle.single.rawValue,
+                             .underlineColor: tertiary], range: m.range)
         }
         each(Highlighter.code) { m in
-            s.addAttributes([.font: mono, .backgroundColor: codeBG, .foregroundColor: NSColor.systemOrange], range: m.range)
+            s.addAttributes([.font: mono, .backgroundColor: codeBG], range: m.range)
         }
 
         // Fenced code blocks.
         for f in fences where NSIntersectionRange(f, range).length > 0 {
             let r = NSIntersectionRange(f, range)
-            s.addAttributes([.font: mono, .backgroundColor: codeBG, .foregroundColor: text.withAlphaComponent(0.85)], range: r)
+            s.addAttributes([.font: mono, .backgroundColor: codeBG, .foregroundColor: text], range: r)
         }
 
         // Template placeholders — painted last so they win.
@@ -304,12 +321,16 @@ final class Highlighter {
                 let inner = ns.substring(with: r)
                 let isInclude = inner.hasPrefix("{{>") || inner.hasPrefix("{{ >")
                 let isBuiltin = inner.contains("{{@") || inner.contains("{{ @")
-                let color: NSColor = isInclude ? .systemTeal : (isBuiltin ? .systemIndigo : accent)
-                s.addAttributes([
-                    .foregroundColor: color,
-                    .backgroundColor: color.withAlphaComponent(0.14),
-                    .font: fontKind == .mono ? boldFont : NSFont.monospacedSystemFont(ofSize: size * 0.92, weight: .semibold),
-                ], range: r)
+                if isInclude {
+                    s.addAttributes([.foregroundColor: secondary, .font: monoStrong,
+                                     .underlineStyle: NSUnderlineStyle.single.rawValue, .underlineColor: tertiary], range: r)
+                } else if isBuiltin {
+                    s.addAttributes([.foregroundColor: secondary, .font: monoStrong], range: r)
+                } else {
+                    s.addAttributes([.foregroundColor: rubric, .font: monoStrong,
+                                     .underlineStyle: NSUnderlineStyle.single.rawValue,
+                                     .underlineColor: Folio.nsAccentSoft], range: r)
+                }
             }
         }
     }

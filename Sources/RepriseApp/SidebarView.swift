@@ -1,17 +1,22 @@
 import SwiftUI
 import RepriseCore
 
+/// The keyed index of the library. Monochrome symbols, small-caps sections,
+/// and projects marked by a square color key: the only color in the column.
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
+    @LookSetting private var look
 
     var body: some View {
         @Bindable var model = model
         List(selection: $model.scope) {
             Section {
-                row("All Prompts", "tray.full.fill", .all, "all", color: .accentColor)
-                row("Pinned", "pin.fill", .pinned, "pinned", color: .orange)
-                row("Templates", "curlybraces", .templates, "templates", color: .purple)
-                row("Recently Used", "clock.fill", .recent, "recent", color: .teal)
+                row("All Prompts", "text.page", .all, "all")
+                row("Pinned", "pin", .pinned, "pinned")
+                row("Templates", "curlybraces", .templates, "templates")
+                row("Recently Used", "clock", .recent, "recent")
+            } header: {
+                Caps("Library")
             }
 
             ForEach(model.spaces) { space in
@@ -26,39 +31,42 @@ struct SidebarView: View {
             }
 
             Section {
-                row("Trash", "trash.fill", .trash, "trash", color: .secondary)
+                row("Trash", "trash", .trash, "trash")
             }
         }
         .listStyle(.sidebar)
-        .modifier(InkSidebar())
-        .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 8) {
-                Button {
-                    model.namingRequest = .init(kind: .newSpace)
-                } label: {
-                    Label("New Space", systemImage: "plus.square.on.square")
-                        .frame(maxWidth: .infinity)
+        .scrollContentBackground(.hidden)
+        .background(Ground(look: look, deep: true).ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Hairline()
+                HStack(spacing: 14) {
+                    Button { model.namingRequest = .init(kind: .newSpace) } label: {
+                        Label("New Space", systemImage: "plus")
+                    }
+                    .help("New space (⌥⌘N)")
+                    Spacer()
+                    Button { model.showHarvest = true } label: {
+                        Label("Harvest", systemImage: "arrow.down.to.line")
+                    }
+                    .help("Find the prompts you keep retyping in Claude Code and Codex (⇧⌘H)")
                 }
-                .buttonStyle(.glass)
-                Button { model.showHarvest = true } label: {
-                    Image(systemName: "leaf.fill")
-                }
-                .buttonStyle(.glass)
-                .help("Harvest prompts you keep retyping in Claude Code & Codex")
+                .buttonStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundStyle(Folio.slate)
+                .padding(.horizontal, 16)
+                .frame(height: 38)
             }
-            .controlSize(.large)
-            .tint(.primary)
-            .padding(12)
         }
-        .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 320)
+        .navigationSplitViewColumnWidth(min: 200, ideal: 228, max: 300)
     }
 
-    private func row(_ title: String, _ icon: String, _ scope: PromptScope, _ key: String, color: Color) -> some View {
-        HStack {
-            Label { Text(title) } icon: { Image(systemName: icon).foregroundStyle(color) }
-            Spacer()
+    private func row(_ title: String, _ icon: String, _ scope: PromptScope, _ key: String) -> some View {
+        HStack(spacing: 0) {
+            Label { Text(title) } icon: { Image(systemName: icon).foregroundStyle(Folio.slate) }
+            Spacer(minLength: 8)
             if let n = model.counts[key], n > 0 {
-                Text(n.formatted()).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Text(n.formatted()).font(.system(size: 11).monospacedDigit()).foregroundStyle(Folio.slate)
             }
         }
         .tag(scope)
@@ -77,26 +85,22 @@ struct SpaceHeader: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: space.icon)
-                .font(.caption)
-                .foregroundStyle(Color(hex: space.color))
-            Text(space.name)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary.opacity(0.75))
+            Caps(space.name)
             Spacer()
             Menu {
                 Button("New Project…", systemImage: "plus") { model.namingRequest = .init(kind: .newProject(spaceID: space.id)) }
-                Button("Edit Space…", systemImage: "pencil") { model.namingRequest = .init(kind: .editSpace(space)) }
+                Button("Rename Space…", systemImage: "pencil") { model.namingRequest = .init(kind: .editSpace(space)) }
                 Button("Show All in Space", systemImage: "square.stack") { model.scope = .space(space.id) }
                 Divider()
                 Button("Delete Space", systemImage: "trash", role: .destructive) { model.deleteSpace(space) }
             } label: {
-                Image(systemName: "ellipsis.circle").font(.callout)
+                Image(systemName: "plus").font(.system(size: 11, weight: .medium)).foregroundStyle(Folio.slate)
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
             .menuIndicator(.hidden)
-            .opacity(hovering ? 1 : 0.0)
+            .opacity(hovering ? 1 : 0)
+            .help("New project, rename, delete")
         }
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
@@ -110,15 +114,13 @@ struct ProjectRow: View {
     let count: Int
 
     var body: some View {
-        HStack(spacing: 9) {
-            RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                .fill(Color(hex: project.color).gradient)
-                .frame(width: 12, height: 12)
-                .shadow(color: Color(hex: project.color).opacity(0.45), radius: 3)
+        HStack(spacing: 10) {
+            ColorKey(hex: project.color, size: 7)
+                .frame(width: 16)
             Text(project.name).lineLimit(1)
-            Spacer()
+            Spacer(minLength: 8)
             if count > 0 {
-                Text(count.formatted()).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Text(count.formatted()).font(.system(size: 11).monospacedDigit()).foregroundStyle(Folio.slate)
             }
         }
         .dropDestination(for: String.self) { items, _ in
@@ -126,7 +128,7 @@ struct ProjectRow: View {
             return true
         }
         .contextMenu {
-            Button("Edit Project…", systemImage: "pencil") { model.namingRequest = .init(kind: .editProject(project)) }
+            Button("Rename Project…", systemImage: "pencil") { model.namingRequest = .init(kind: .editProject(project)) }
             Button("New Prompt Here", systemImage: "square.and.pencil") { model.scope = .project(project.id); model.newPrompt() }
             Menu("Move to Space") {
                 ForEach(model.spaces.filter { $0.id != project.spaceID }) { s in
@@ -135,18 +137,6 @@ struct ProjectRow: View {
             }
             Divider()
             Button("Delete Project", systemImage: "trash", role: .destructive) { model.deleteProject(project) }
-        }
-    }
-}
-
-/// Ink trades the glass sidebar for a near-black slab — closer to a terminal than to Finder.
-struct InkSidebar: ViewModifier {
-    @AppStorage("look") private var look: Look = .liquid
-    func body(content: Content) -> some View {
-        if look == .ink {
-            content.scrollContentBackground(.hidden).background(Color(white: 0.03))
-        } else {
-            content
         }
     }
 }

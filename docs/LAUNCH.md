@@ -11,7 +11,7 @@ The agent-native crowd shares tools that (a) are visibly beautiful in a 20-secon
 | Lever | Asset |
 |---|---|
 | **Named pain** | "I've pasted the same 600-word prompt 32 times." Harvest makes everyone's own number visible, and **that number is the meme**. |
-| **Visual** | Liquid Glass panel summoned over a terminal; aura shifting color per prompt; a 4 MB prompt scrolling smoothly next to Apple Notes freezing. |
+| **Visual** | A prompt set like a book page, its blanks filled in the margin; the panel summoned over a terminal; a 4 MB prompt scrolling smoothly next to Apple Notes freezing. Three designs side by side. |
 | **Cheat code** | ⌥⌘P → type 3 letters → ↩ → a filled, 2k-token prompt lands in Claude Code. And `claude mcp add reprise`. |
 
 The meme mechanic: **"Run Harvest. Post your number."** It's personal, slightly embarrassing, and everyone has one.
@@ -28,9 +28,9 @@ Shared setup: macOS 26, wallpaper with strong color (the glass needs something t
 | D2 | **Notes vs Reprise** | 15 s | Split screen: the same 4 MB prompt. Left: Notes with a beachball while scrolling. Right: Reprise, buttery scroll + live highlighting. Caption: *"Apple Notes: 4 MB prompt. Reprise: 4 MB prompt."* | The "why" tweet; this is the one that travels |
 | D3 | **Harvest** | 18 s | Click 🌱 → list populates → zoom on "×32 · 49,507 chars" → check 5 → *Save* → they appear as templates. Caption: *"It read my Claude Code + Codex history. I'd pasted one prompt 32 times."* | Meme starter |
 | D4 | **Agents use it** | 25 s | In Claude Code: "save the prompt you just ran as a Reprise template called 'Migrate to Swift 6'". Cut to Reprise: it appears live with `{{module}}` placeholders. Then type `/mcp__reprise__migrate-to-swift-6 Networking`. | MCP / agent-native crowd |
-| D5 | **Looks** | 10 s | ⇧⌘L cycling Liquid → Tinted → Ink while clicking prompts of different colors; the aura morphs. No caption except "⇧⌘L". | Pure eye candy, design Twitter |
+| D5 | **Designs** | 12 s | The same prompt in Edition → Machined → Quiet (View → Design), then ⇧⌘L through light, dark and glass in one of them. No caption except the three names. | Design Twitter, people who care how tools feel |
 | D6 | **Includes** | 15 s | Edit "Staff Engineer" preamble once → show three templates that `{{> Staff Engineer}}` update in preview. Caption: *"Write your role prompt once. Every template inherits it."* | Prompt-engineering crowd |
-| D7 | **Ink + CLI** | 12 s | Terminal only: `reprise cast "review" --var focus=security -c` → `✓ copied (1,204 tokens)` → paste. | Terminal purists, HN |
+| D7 | **CLI** | 12 s | Terminal only: `reprise cast "review" --var focus=security -c` → `✓ copied (1,204 tokens)` → paste. | Terminal purists, HN |
 
 Record D1, D2 and D3 first; they carry the launch.
 
@@ -39,7 +39,7 @@ Record D1, D2 and D3 first; they carry the launch.
 ## 2. Timeline
 
 ### T-10 → T-3: build in public (one post a day, no link)
-- T-10: screenshot of the Tinted look. *"Building a prompt studio for people who live in Claude Code. Native, Liquid Glass, open source. Shipping soon."*
+- T-10: the Edition screenshot. *"Building a prompt studio for people who live in Claude Code. It treats a prompt like a page, with the blanks in the margin. Native, open source. Shipping soon."*
 - T-8: D2 (Notes vs Reprise) teaser, no name: *"Why does Apple Notes do this with a 100k-char prompt?"*
 - T-6: the template syntax as an image. Ask: *"What would you add?"* (engagement + feedback)
 - T-4: the icon reveal + the name story (reprise = a theme that returns, with variations).
@@ -74,7 +74,7 @@ So I built Reprise: a native Mac app for prompts you use again and again.
 
 ⌥⌘P from any terminal → fill the blanks → it's in Claude Code.
 
-Open source. Liquid Glass. 4.9 MB.
+Open source. Native. 4.2 MB.
 [D1]
 
 **2/**
@@ -114,7 +114,7 @@ What's your number?
 **6/**
 Spaces → projects → prompts, each with a name and its own color from an endless OKLCH shade pool.
 
-Three looks: Liquid, Tinted, Ink.
+It comes in three designs (Edition, Machined, Quiet), each its own app. Install all three and keep the one you like.
 [D5]
 
 **7/**
@@ -129,7 +129,7 @@ If it saves you one re-paste today, a ⭐ helps a lot.
 2. *"The best prompt engineers I know don't write better prompts every time. They write one great prompt and reuse it 200 times."* [D6]
 3. *"Apple Notes is not a prompt manager."* [D2, no other text]
 4. *"Claude Code can now save its own best prompts into my library. `save_prompt` over MCP is weirdly addictive."* [D4]
-5. *"Ink mode. For the people who think Finder has too many pixels."* [Ink screenshot]
+5. *"I couldn't pick one design, so Reprise ships three: a book page, an instrument, a gallery wall. Which one?"* [three screenshots, edition / machined / quiet]
 6. *"Things I refused to put in a prompt app: an account, a subscription, telemetry, Electron."*
 7. *"Your role preamble is a dependency. Treat it like one: `{{> Staff Engineer}}`."*
 8. *"⌥⌘P · bug · ↩. That's the whole UX."* [D1 cropped to 8 s]
@@ -142,7 +142,7 @@ If it saves you one re-paste today, a ⭐ helps a lot.
 - *"Windows/Linux?"* → "The core and CLI are portable Swift; the app is native macOS on purpose. If this takes off, the CLI + MCP come to Linux first."
 
 ### Show HN body
-> Reprise is a macOS app (Swift 6, SwiftUI, AppKit, SQLite, no dependencies, 4.9 MB) for storing and reusing long prompts for coding agents. Templates have defaults, choices and includes; a global hotkey panel fills and pastes them into your terminal; an MCP server lets Claude Code/Codex search and save prompts. I built it because Apple Notes stuttered on my 100k-character prompts and Harvest (which scans your local agent history) showed I'd pasted one prompt 32 times. Benchmarks and design notes are in the README. Happy to talk about TextKit 2, FTS5 or the template grammar.
+> Reprise is a macOS app (Swift 6, SwiftUI, AppKit, SQLite, no dependencies, 4.2 MB) for storing and reusing long prompts for coding agents. Templates have defaults, choices and includes; a global hotkey panel fills and pastes them into your terminal; an MCP server lets Claude Code/Codex search and save prompts. I built it because Apple Notes stuttered on my 100k-character prompts and Harvest (which scans your local agent history) showed I'd pasted one prompt 32 times. Benchmarks and design notes are in the README. Happy to talk about TextKit 2, FTS5 or the template grammar.
 
 ### Reddit (r/ClaudeAI): lead with the workflow, not the app
 Title: *"I scanned my Claude Code history and found I'd re-pasted the same prompt dozens of times, so I built a fix (open source)"*
@@ -164,7 +164,7 @@ Track: stars (star-history), README → release downloads, `claude mcp add repri
 - [ ] Notarized build (Developer ID) so the download "just works". This is the #1 friction risk.
 - [ ] `brew install --cask reprise` tap
 - [ ] README GIF of D1 at the top (≤ 6 MB)
-- [ ] Social preview image (1280×640): Tinted screenshot + wordmark
+- [ ] Social preview image (1280×640): Edition screenshot + wordmark
 - [ ] Pinned tweet = launch thread
-- [ ] GitHub topics: `prompt-engineering`, `claude-code`, `codex`, `mcp`, `macos`, `swiftui`, `liquid-glass`
+- [ ] GitHub topics: `prompt-engineering`, `claude-code`, `codex`, `mcp`, `macos`, `swiftui`, `macos-app`
 - [ ] Issue templates + "Show us your setup" discussion

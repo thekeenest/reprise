@@ -77,7 +77,7 @@ The market is **crowded and undifferentiated at the bottom**: dozens of "prompt 
 
 1. **Agent-native wiring**: MCP (read *and write*), slash-command publishing, a CLI.
 2. **Serious long-form editing**: multi-MB prompts, prompt-aware highlighting, versions.
-3. **Taste**: a first-class macOS 26 Liquid Glass app rather than a utility window.
+3. **Taste**: a first-class macOS 26 app with a design of its own, rather than a utility window or a notes app in costume.
 4. **Open source + local-first**, which this ICP strongly prefers for prompts containing IP.
 5. **A built-in "aha" moment** (Harvest) that proves value on first launch using the user's own data.
 
@@ -117,9 +117,39 @@ Each competitor has one or two of these. Reprise ships all five on day one.
 | Images and links pasted into agents | Attachments copied into the library; absolute paths and URLs appended on use |
 | Rich-text mangling (smart quotes) | Plain-text storage, smart substitutions off, prompt-aware highlighting (XML tags) |
 | Fear of data loss (extension reviews) | Autosave, 50-version history, WAL, Markdown export |
-| Liquid Glass / modern Mac fit | SwiftUI Liquid Glass throughout + three looks (Liquid, Tinted, Ink) |
+| Taste-driven users; "must not feel vibe-coded or like a notes app" | Three complete designs (Edition, Machined, Quiet), each with light, dark and glass looks, native controls throughout (see section 6) |
 
 ### Deliberately *not* built (yet)
 - **Cloud accounts / sync service.** Conflicts with local-first; `REPRISE_HOME` on an iCloud folder covers the simple case.
 - **In-app LLM "prompt optimizer".** Commodity and metered by competitors; agents can already do this through MCP.
 - **Prompt marketplace.** Comes after community packs prove demand.
+
+---
+
+## 6. Design research: why v0.1 looked generic, and what replaced it
+
+v0.1 shipped with three "looks" (Liquid, Tinted, Ink): glass panes over a soft color aura that took on each prompt's color, colored project pills, and a dark monospaced mode. It worked, and it photographed well. But it read as generic, and the reasons can be named.
+
+### What makes an app look vibe-coded
+Sources: [Linear, "A calmer interface for a product in motion" (2026)](https://linear.app/now/behind-the-latest-design-refresh), [Linear, "How we redesigned the Linear UI"](https://linear.app/now/how-we-redesigned-the-linear-ui), [the "AI purple problem"](https://dev.to/jaainil/ai-purple-problem-make-your-ui-unmistakable-3ono), [Why every AI-built website looks the same](https://dev.to/alanwest/why-every-ai-built-website-looks-the-same-blame-tailwinds-indigo-500-3h2p), [How to fix the AI-generated look](https://dev.to/alanwest/how-to-fix-the-ai-generated-look-in-your-frontend-1ahh), [Why AI-generated UIs are all the same color](https://dev.to/kenimo49/why-ai-generated-uis-are-all-the-same-color-and-the-data-to-prove-it-12oe), [iA Writer](https://ia.net/?p=261) on typography as function, plus app galleries (Mobbin, Refero) for how shipped Mac and productivity apps handle sidebars, lists and inspectors.
+
+The tells that recur across those sources, and which v0.1 had:
+
+| Tell | v0.1 | Now |
+|---|---|---|
+| Color everywhere: gradients, glows, every object tinted | Aura behind every pane; tinted glass; colored pills | One accent for what you act on; project colors are 6–8pt square keys |
+| Default type, one weight, no hierarchy of voices | SF everywhere | Each design commits to a type voice (serif page, grotesk instrument, light gallery) and all metadata is a caption |
+| Cards and pills as the unit of everything | Pill badges, rounded snippet rows | Index as a table of contents; hairlines; no snippets |
+| Chrome competes with content | Glass on every surface | Navigation recedes (Linear's rule); the page is the brightest, calmest thing on screen |
+| Costume (terminal, "hacker" mono) | Ink look | Mono only for placeholders and commands, unless the user picks it |
+| Sparse, slow layouts that look like a landing page | Big empty glass | A dense margin of real apparatus beside a readable measure |
+
+### The decision
+The main window is for writing and refining prompts, so it should feel like a page, not a feed. The chosen direction is the **Annotated Edition**: the prompt is set on a book measure, and everything about it (blanks, includes, files, agent commands, record) sits in a margin, the way a critical edition keeps notes beside the text. The other two designs keep that structure and change only the voice:
+
+- **Edition**: serif page, small-caps captions, vermilion rubric blanks keyed A B C, square corners, a detent rule under the title.
+- **Machined**: grotesk, numbered orange key caps, orange only on the keys and the two actions (Use, Copy filled), 6pt radius. An instrument, not a terminal.
+- **Quiet**: light 34pt titles, wide-tracked captions, ink-blue italic roman keys, extra line height. A gallery wall.
+
+Each ships as its own build so they can be compared side by side. Tokens and rules are in [`DESIGN.md`](../DESIGN.md).
+

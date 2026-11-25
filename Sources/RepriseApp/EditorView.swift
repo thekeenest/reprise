@@ -4,103 +4,150 @@ import QuickLook
 import RepriseCore
 import UniformTypeIdentifiers
 
+/// The page. The prompt is set at a book measure in New York; its machinery
+/// (blanks, includes, files, publishing, record) hangs in a ruled margin beside it.
 struct EditorView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("look") private var look: Look = .liquid
-    @AppStorage("editorFont") private var editorFont: EditorFont = .mono
-    @AppStorage("editorSize") private var editorSize: Double = 14
+    @LookSetting private var look
+    @AppStorage("editorFontChoice") private var fontChoice = ""
+    @AppStorage("editorSizeChoice") private var sizeChoice: Double = 0
+    private var editorFont: EditorFont { EditorFont.resolve(fontChoice) }
+    private var editorSize: Double { sizeChoice > 0 ? sizeChoice : Folio.style.editorSize }
+
+    static let inset: CGFloat = 44
 
     var body: some View {
-        if let p = model.current {
-            VStack(spacing: 0) {
-                EditorHeader(prompt: p)
-                    .padding(.horizontal, 28)
-                    .padding(.top, 18)
-                    .padding(.bottom, 6)
+        Group {
+            if let p = model.current {
+                GeometryReader { geo in
+                    let showMargin = model.showMargin && geo.size.width >= 640
+                    HStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            PageHeader(prompt: p, measure: measure)
+                                .padding(.horizontal, Self.inset)
+                                .padding(.top, 22)
+                                .padding(.bottom, 14)
+                            MarkdownEditor(
+                                promptID: p.id,
+                                initialText: p.body,
+                                font: editorFont,
+                                fontSize: editorSize,
+                                inset: Self.inset,
+                                measure: measure,
+                                onChange: { model.bodyDidChange(p.id, $0) },
+                                onPasteImage: { data, ext in model.attach(imageData: data, ext: ext) },
+                                onDropFiles: { model.attach(files: $0) }
+                            )
+                            .id(p.id)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                if !model.attachments.isEmpty {
-                    AttachmentStrip(attachments: model.attachments, accent: Color(hex: p.color))
-                        .padding(.horizontal, 22)
-                        .padding(.bottom, 6)
+                        if showMargin {
+                            Hairline(vertical: true)
+                            MarginView(prompt: p)
+                                .frame(width: 268)
+                                .transition(.move(edge: .trailing).combined(with: .opacity))
+                        }
+                    }
                 }
+                .toolbar { EditorToolbar(prompt: p) }
+            } else {
+                EmptyPage()
+            }
+        }
+        .background(Ground(look: look).ignoresSafeArea())
+    }
 
-                MarkdownEditor(
-                    promptID: p.id,
-                    initialText: p.body,
-                    font: editorFont,
-                    fontSize: editorSize,
-                    accent: NSColor(hex: p.color),
-                    look: look,
-                    onChange: { model.bodyDidChange(p.id, $0) },
-                    onPasteImage: { data, ext in model.attach(imageData: data, ext: ext) },
-                    onDropFiles: { model.attach(files: $0) }
-                )
-                .id(p.id)
+    private var measure: CGFloat { CGFloat(editorSize) * (editorFont == .mono ? 50 : 44) }
+}
+
+struct EmptyPage: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            RepriseMark(size: 34)
+            Text("Select a prompt, or start a new one.")
+                .font(.text(20))
+                .foregroundStyle(Folio.ink)
+            VStack(alignment: .leading, spacing: 7) {
+                hint("⌘N", "New prompt")
+                hint("⌥⌘P", "Quick Panel from any app")
+                hint("⇧⌘H", "Harvest prompts from Claude Code and Codex")
             }
-            .overlay(alignment: .bottom) {
-                ActionBar(prompt: p)
-                    .padding(.bottom, 16)
-            }
-            .background { Aura(color: Color(hex: p.color), look: look).ignoresSafeArea() }
-            .animation(.smooth(duration: 0.5), value: p.color)
-        } else {
-            ZStack {
-                Aura(color: Color(hex: model.accentHex), look: look).ignoresSafeArea()
-                VStack(spacing: 12) {
-                    RepriseMark(size: 64)
-                    Text("Select a prompt, or press ⌘N").font(.title3).foregroundStyle(.secondary)
-                    Text("⌥⌘P summons Reprise from anywhere").font(.callout).foregroundStyle(.tertiary)
-                }
-            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(EditorView.inset)
+        .padding(.top, 40)
+    }
+
+    private func hint(_ key: String, _ text: String) -> some View {
+        HStack(spacing: 10) {
+            KeyCap(key: key).frame(width: 44, alignment: .leading)
+            Text(text).font(.system(size: 12.5)).foregroundStyle(Folio.slate)
         }
     }
 }
 
-struct EditorHeader: View {
+// MARK: Header
+
+struct PageHeader: View {
     @Environment(AppModel.self) private var model
     let prompt: Prompt
+    let measure: CGFloat
     @State private var title = ""
-    @State private var tags = ""
     @State private var showColors = false
     @FocusState private var titleFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 12) {
-                Button { showColors.toggle() } label: {
-                    ColorDot(hex: prompt.color, size: 18)
-                }
-                .buttonStyle(.plain)
-                .help("Color — click for the shade pool")
-                .popover(isPresented: $showColors, arrowEdge: .bottom) {
-                    ShadePicker(hex: prompt.color) { hex in model.update { $0.color = hex } }
-                }
+        VStack(alignment: .leading, spacing: 10) {
+            TextField("Name this prompt", text: $title, axis: .horizontal)
+                .textFieldStyle(.plain)
+                .font(.title)
+                .tracking(Folio.style.titleTracking)
+                .foregroundStyle(Folio.ink)
+                .focused($titleFocused)
+                .onSubmit { commitTitle() }
+                .onChange(of: titleFocused) { _, f in if !f { commitTitle() } }
 
-                TextField("Name this prompt", text: $title, axis: .horizontal)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .focused($titleFocused)
-                    .onSubmit { commitTitle() }
-                    .onChange(of: titleFocused) { _, f in if !f { commitTitle() } }
-            }
+            DetentRule()
+                .frame(maxWidth: measure)
+                .padding(.top, 2)
 
-            HStack(spacing: 10) {
-                ProjectChip(prompt: prompt)
-                if prompt.isTemplate {
-                    VariableChips(prompt: prompt)
+            // The apparatus line: identity and place first, then the measurements.
+            // On a narrow page the measurements drop to a second line instead of wrapping.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    place
+                    Text("·").font(.apparatus(10.5)).foregroundStyle(Folio.slate)
+                    StatsLine(prompt: prompt)
                 }
-                if prompt.exportCommand {
-                    Badge(text: "/\(prompt.slug)", icon: "terminal.fill", color: .teal)
-                        .help("Published as a slash command in Claude Code (/\(prompt.slug)) and Codex (/prompts:\(prompt.slug))")
+                VStack(alignment: .leading, spacing: 4) {
+                    place
+                    StatsLine(prompt: prompt)
                 }
-                Spacer()
-                StatsLine()
             }
+            .frame(maxWidth: measure, alignment: .leading)
         }
-        .onAppear { title = prompt.title; tags = prompt.tags; if model.focusTitle { titleFocused = true; model.focusTitle = false } }
-        .onChange(of: prompt.id) { title = prompt.title; tags = prompt.tags }
+        .onAppear { title = prompt.title; if model.focusTitle { titleFocused = true; model.focusTitle = false } }
+        .onChange(of: prompt.id) { title = prompt.title }
         .onChange(of: prompt.title) { _, t in if !titleFocused { title = t } }
         .onChange(of: model.focusTitle) { _, f in if f { titleFocused = true; model.focusTitle = false } }
+    }
+
+    private var place: some View {
+        HStack(spacing: 8) {
+            Button { showColors.toggle() } label: {
+                ColorKey(hex: prompt.color, size: 8)
+                    .padding(4)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("This prompt's color. Click for the shade pool (⇧⌘K shuffles).")
+            .popover(isPresented: $showColors, arrowEdge: .bottom) {
+                ShadePicker(hex: prompt.color) { hex in model.update { $0.color = hex } }
+            }
+            .padding(.leading, -4)
+            ProjectLine(prompt: prompt)
+        }
     }
 
     private func commitTitle() {
@@ -112,7 +159,8 @@ struct EditorHeader: View {
     }
 }
 
-struct ProjectChip: View {
+/// "ENGINEERING · DAILY AGENT WORK", and a menu that moves the prompt.
+struct ProjectLine: View {
     @Environment(AppModel.self) private var model
     let prompt: Prompt
 
@@ -124,152 +172,250 @@ struct ProjectChip: View {
                 Section(s.name) {
                     ForEach(model.projects.filter { $0.spaceID == s.id }) { p in
                         Button { model.move(prompt.id, to: p.id) } label: {
-                            Label(p.name, systemImage: p.id == prompt.projectID ? "checkmark" : "circle.fill")
+                            if p.id == prompt.projectID { Label(p.name, systemImage: "checkmark") } else { Text(p.name) }
                         }
                     }
                 }
             }
         } label: {
-            HStack(spacing: 5) {
-                if let space { Text(space.name).foregroundStyle(.secondary) ; Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary) }
-                ColorDot(hex: project?.color ?? "#888888", size: 7)
-                Text(project?.name ?? "—").fontWeight(.medium)
-            }
-            .font(.callout)
+            Caps([space?.name, project?.name].compactMap { $0 }.joined(separator: " / "), color: Folio.ink, size: 10.5)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-    }
-}
-
-struct VariableChips: View {
-    @Environment(AppModel.self) private var model
-    let prompt: Prompt
-    var body: some View {
-        let vars = model.store.variables(prompt)
-        HStack(spacing: 4) {
-            ForEach(vars.prefix(5)) { v in
-                Text(v.name)
-                    .font(.caption.monospaced().weight(.medium))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .foregroundStyle(Color(hex: prompt.color))
-                    .background(Color(hex: prompt.color).opacity(0.14), in: Capsule())
-            }
-            if vars.count > 5 { Text("+\(vars.count - 5)").font(.caption).foregroundStyle(.secondary) }
-        }
+        .help("Move to another project")
     }
 }
 
 struct StatsLine: View {
     @Environment(AppModel.self) private var model
+    let prompt: Prompt
+
     var body: some View {
         let s = model.liveStats
-        HStack(spacing: 10) {
-            Text("\(s.words.formatted()) words")
-            Text("~\(s.tokens.formatted()) tokens")
-            Image(systemName: s.saved ? "checkmark.icloud" : "circle.dotted")
-                .foregroundStyle(s.saved ? Color.secondary : Color.orange)
-                .contentTransition(.symbolEffect(.replace))
+        HStack(spacing: 0) {
+            Caps(parts(s).joined(separator: " · "), size: 10.5)
+            Text(" · ").font(.apparatus(10.5)).foregroundStyle(Folio.slate)
+            Caps(s.saved ? "saved" : "editing", color: s.saved ? Folio.slate : Folio.rubric, size: 10.5)
         }
-        .font(.caption.monospacedDigit())
-        .foregroundStyle(.secondary)
+        .monospacedDigit()
+        .fixedSize()
+        .contentTransition(.opacity)
+    }
+
+    private func parts(_ s: AppModel.LiveStats) -> [String] {
+        var out = ["\(s.tokens.formatted()) tokens"]
+        if s.variables > 0 { out.append("\(s.variables) blank\(s.variables == 1 ? "" : "s")") }
+        if prompt.useCount > 0 { out.append("played \(prompt.useCount)×") }
+        return out
     }
 }
 
-/// Floating Liquid Glass action bar — the buttons morph together inside a GlassEffectContainer.
-struct ActionBar: View {
+// MARK: Toolbar
+
+struct EditorToolbar: ToolbarContent {
     @Environment(AppModel.self) private var model
-    @AppStorage("look") private var look: Look = .liquid
     let prompt: Prompt
-    @State private var showLink = false
-    @State private var link = ""
-    @State private var importing = false
+
+    var body: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button { model.copyRaw(prompt.id) } label: { Label("Copy Source", systemImage: "doc.on.doc") }
+                .help("Copy the prompt as written, blanks included (⇧⌘C)")
+            Button { model.togglePin(prompt.id) } label: {
+                Label(prompt.pinned ? "Unpin" : "Pin", systemImage: prompt.pinned ? "pin.fill" : "pin")
+            }
+            .help(prompt.pinned ? "Unpin (⇧⌘P)" : "Pin to the top of the Quick Panel (⇧⌘P)")
+            Button {
+                model.flushSave(); try? model.store.snapshot(prompt.id); model.historyTarget = prompt
+            } label: { Label("History", systemImage: "clock.arrow.circlepath") }
+                .help("Earlier versions")
+            Button { withAnimation(.easeOut(duration: 0.2)) { model.showMargin.toggle() } } label: {
+                Label("Margin", systemImage: "sidebar.right")
+            }
+            .help("Show or hide the margin (⌥⌘0)")
+        }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+        ToolbarItem(placement: .primaryAction) {
+            Button { model.use(prompt.id) } label: {
+                Label("Use", systemImage: "play.fill").labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(Folio.fill)
+            .help(model.blanks.isEmpty ? "Copy this prompt (⌘↩)" : "Copy with the margin's blanks filled in (⌘↩)")
+        }
+    }
+}
+
+// MARK: Margin
+
+struct MarginView: View {
+    @Environment(AppModel.self) private var model
+    let prompt: Prompt
 
     var body: some View {
-        GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 8) {
-                Button { model.use(prompt.id) } label: {
-                    Label(prompt.isTemplate ? "Fill & Copy" : "Copy", systemImage: prompt.isTemplate ? "wand.and.sparkles" : "doc.on.doc.fill")
-                        .font(.body.weight(.semibold))
-                        .padding(.horizontal, 6)
-                }
-                .buttonStyle(.glassProminent)
-                .tint(Color(hex: prompt.color))
-                .keyboardShortcut(.return, modifiers: .command)
-                .help("⌘↩")
-
-                HStack(spacing: 2) {
-                    iconButton("pin\(prompt.pinned ? ".fill" : "")", prompt.pinned ? "Unpin" : "Pin") { model.togglePin(prompt.id) }
-                    iconButton("paperclip", "Attach files or images") { importing = true }
-                    iconButton("link", "Attach a link") { showLink = true }
-                        .popover(isPresented: $showLink) {
-                            HStack {
-                                TextField("https://…", text: $link).frame(width: 280).onSubmit(addLink)
-                                Button("Add", action: addLink).buttonStyle(.glassProminent)
-                            }.padding(12)
-                        }
-                    iconButton("clock.arrow.circlepath", "Version history") { model.flushSave(); try? model.store.snapshot(prompt.id); model.historyTarget = prompt }
-                    iconButton(prompt.exportCommand ? "terminal.fill" : "terminal", "Publish as /\(prompt.slug) in Claude Code & Codex") { model.toggleAgentCommand(prompt.id) }
-                    Menu {
-                        Button("Copy Source", systemImage: "doc.on.doc") { model.copyRaw(prompt.id) }
-                        Button("Duplicate", systemImage: "plus.square.on.square") { model.duplicate(prompt.id) }
-                        Button("Shuffle Color", systemImage: "dice") { model.update { $0.color = Palette.random() } }
-                        Divider()
-                        Button("Move to Trash", systemImage: "trash", role: .destructive) { model.trash(prompt.id) }
-                    } label: {
-                        Image(systemName: "ellipsis").frame(width: 30, height: 26)
-                    }
-                    .menuStyle(.button)
-                    .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .glassEffect(.regular.interactive(), in: .capsule)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 26) {
+                if !model.blanks.isEmpty { BlanksSection(prompt: prompt) }
+                if !model.includes.isEmpty { IncludesSection(names: model.includes) }
+                FilesSection(attachments: model.attachments)
+                PublishSection(prompt: prompt)
+                RecordSection(prompt: prompt)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 26)
+            .padding(.bottom, 30)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .controlSize(.large)
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { r in
-            if case .success(let urls) = r {
-                let granted = urls.filter { $0.startAccessingSecurityScopedResource() || true }
-                model.attach(files: granted)
-            }
-        }
-    }
-
-    private func addLink() { model.attach(link: link); link = ""; showLink = false }
-
-    private func iconButton(_ icon: String, _ help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .frame(width: 30, height: 26)
-                .contentShape(Rectangle())
-                .contentTransition(.symbolEffect(.replace))
-        }
-        .buttonStyle(.plain)
-        .help(help)
+        .scrollIndicators(.never)
     }
 }
 
-struct AttachmentStrip: View {
+struct MarginHeading<Trailing: View>: View {
+    var title: String
+    @ViewBuilder var trailing: Trailing
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Caps(title, color: Folio.ink, size: 11)
+                Spacer()
+                trailing
+            }
+            Hairline()
+        }
+    }
+}
+
+extension MarginHeading where Trailing == EmptyView {
+    init(title: String) { self.title = title; self.trailing = EmptyView() }
+}
+
+/// The signature: every blank carries a rubric key, matching the rubric placeholders in the text.
+struct BlanksSection: View {
+    @Environment(AppModel.self) private var model
+    let prompt: Prompt
+    @FocusState private var focused: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            MarginHeading(title: "Blanks") { Caps("\(model.blanks.count)", size: 10.5) }
+            ForEach(Array(model.blanks.enumerated()), id: \.element.id) { i, v in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    BlankKey(index: i)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(v.name)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(Folio.slate)
+                        field(v)
+                    }
+                }
+            }
+            Button { model.use(prompt.id) } label: {
+                PrimaryLabel(title: "Copy filled", shortcut: "⌘↩")
+            }
+            .buttonStyle(PressStyle())
+            .padding(.top, 4)
+        }
+    }
+
+    @ViewBuilder
+    private func field(_ v: Template.Variable) -> some View {
+        if v.isChoice {
+            Picker("", selection: Binding(get: { model.fillValues[v.name] ?? v.defaultValue },
+                                         set: { model.fillValues[v.name] = $0 })) {
+                ForEach(v.options, id: \.self) { Text($0).tag($0) }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            VStack(spacing: 3) {
+                TextField(v.defaultValue.isEmpty ? "Fill in" : v.defaultValue,
+                          text: Binding(get: { model.fillValues[v.name] ?? "" }, set: { model.fillValues[v.name] = $0 }),
+                          axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.text(13.5))
+                    .foregroundStyle(Folio.ink)
+                    .lineLimit(1...6)
+                    .focused($focused, equals: v.name)
+                Rectangle()
+                    .fill(focused == v.name ? Folio.rubric : Folio.rule)
+                    .frame(height: focused == v.name ? 1 : Hairline.px)
+            }
+        }
+    }
+}
+
+struct PressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.72 : 1)
+    }
+}
+
+struct IncludesSection: View {
+    @Environment(AppModel.self) private var model
+    let names: [String]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MarginHeading(title: "Includes")
+            ForEach(names, id: \.self) { n in
+                Button { model.open(named: n) } label: {
+                    HStack(spacing: 6) {
+                        Text(n).font(.text(13.5)).foregroundStyle(Folio.ink).lineLimit(1)
+                        Spacer()
+                        Image(systemName: "arrow.up.right").font(.system(size: 9, weight: .medium)).foregroundStyle(Folio.slate)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Open “\(n)”. Edits there change every prompt that includes it.")
+            }
+        }
+    }
+}
+
+struct FilesSection: View {
     @Environment(AppModel.self) private var model
     let attachments: [Attachment]
-    let accent: Color
+    @State private var importing = false
+    @State private var showLink = false
+    @State private var link = ""
     @State private var preview: URL?
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            MarginHeading(title: "Files & Links") {
+                Menu {
+                    Button("Add Files…") { importing = true }
+                    Button("Add Link…") { showLink = true }
+                } label: {
+                    Image(systemName: "plus").font(.system(size: 11, weight: .medium)).foregroundStyle(Folio.slate)
+                }
+                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+                .help("Attach files or a link")
+                .popover(isPresented: $showLink) {
+                    HStack {
+                        TextField("https://…", text: $link).frame(width: 260).onSubmit(addLink)
+                        Button("Add", action: addLink).buttonStyle(.borderedProminent)
+                    }.padding(12)
+                }
+            }
+            if attachments.isEmpty {
+                Text("Paste or drop images and files onto the page. Their paths are added when you use the prompt.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Folio.slate)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
                 ForEach(attachments) { a in
-                    AttachmentTile(attachment: a, accent: accent)
+                    AttachmentRow(attachment: a)
                         .onTapGesture {
                             if a.kind == .link, let u = URL(string: a.value) { NSWorkspace.shared.open(u) }
                             else { preview = URL(fileURLWithPath: a.value) }
                         }
                         .contextMenu {
-                            Button("Copy Path / URL", systemImage: "doc.on.clipboard") { Paster.copy(a.value) }
+                            Button("Copy Path or URL", systemImage: "doc.on.clipboard") { Paster.copy(a.value) }
                             if a.kind == .image, let img = NSImage(contentsOfFile: a.value) {
                                 Button("Copy Image", systemImage: "photo") {
                                     NSPasteboard.general.clearContents(); NSPasteboard.general.writeObjects([img])
@@ -283,51 +429,133 @@ struct AttachmentStrip: View {
                         }
                 }
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
         }
         .quickLookPreview($preview)
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { r in
+            if case .success(let urls) = r {
+                let granted = urls.filter { $0.startAccessingSecurityScopedResource() || true }
+                model.attach(files: granted)
+            }
+        }
     }
+
+    private func addLink() { model.attach(link: link); link = ""; showLink = false }
 }
 
-struct AttachmentTile: View {
+struct AttachmentRow: View {
     let attachment: Attachment
-    let accent: Color
     @State private var thumb: NSImage?
 
     var body: some View {
-        Group {
-            switch attachment.kind {
-            case .image:
-                Group {
-                    if let thumb { Image(nsImage: thumb).resizable().scaledToFill() }
-                    else { Color.secondary.opacity(0.15) }
-                }
-                .frame(width: 64, height: 46)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
-                .task(id: attachment.id) { thumb = await Thumbs.load(attachment.value, max: 160) }
-                .onDrag { NSItemProvider(contentsOf: URL(fileURLWithPath: attachment.value)) ?? NSItemProvider() }
-            case .link, .file:
-                Label(attachment.name, systemImage: attachment.kind == .link ? "link" : "doc.fill")
-                    .font(.caption.weight(.medium))
-                    .lineLimit(1)
-                    .frame(maxWidth: 180)
-                    .padding(.horizontal, 10)
-                    .frame(height: 46)
-                    .glassEffect(.regular.tint(accent.opacity(0.15)), in: .rect(cornerRadius: 10))
-                    .onDrag {
-                        attachment.kind == .link
-                            ? NSItemProvider(object: (URL(string: attachment.value) ?? URL(fileURLWithPath: "/")) as NSURL)
-                            : (NSItemProvider(contentsOf: URL(fileURLWithPath: attachment.value)) ?? NSItemProvider())
+        HStack(spacing: 10) {
+            Group {
+                if attachment.kind == .image {
+                    Group {
+                        if let thumb { Image(nsImage: thumb).resizable().scaledToFill() } else { Folio.wash }
                     }
+                    .frame(width: 34, height: 26)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: min(Folio.radius, 4)))
+                    .overlay(RoundedRectangle(cornerRadius: min(Folio.radius, 4)).strokeBorder(Folio.rule, lineWidth: Hairline.px))
+                    .task(id: attachment.id) { thumb = await Thumbs.load(attachment.value, max: 80) }
+                } else {
+                    Image(systemName: attachment.kind == .link ? "link" : "doc")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Folio.slate)
+                        .frame(width: 34, height: 26)
+                        .overlay(RoundedRectangle(cornerRadius: min(Folio.radius, 4)).strokeBorder(Folio.rule, lineWidth: Hairline.px))
+                }
             }
+            Text(attachment.name)
+                .font(.system(size: 12))
+                .foregroundStyle(Folio.ink)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
         }
+        .contentShape(Rectangle())
         .help(attachment.value)
+        .onDrag {
+            attachment.kind == .link
+                ? NSItemProvider(object: (URL(string: attachment.value) ?? URL(fileURLWithPath: "/")) as NSURL)
+                : (NSItemProvider(contentsOf: URL(fileURLWithPath: attachment.value)) ?? NSItemProvider())
+        }
     }
 }
 
-/// Downsampled thumbnails via ImageIO — never decodes a full 40 MP screenshot just to show 64 px.
+struct PublishSection: View {
+    @Environment(AppModel.self) private var model
+    let prompt: Prompt
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MarginHeading(title: "Agents")
+            Toggle(isOn: Binding(get: { prompt.exportCommand }, set: { _ in model.toggleAgentCommand(prompt.id) })) {
+                Text("Publish as a slash command").font(.system(size: 12))
+            }
+            .toggleStyle(.checkbox)
+            .help("Writes ~/.claude/commands/\(prompt.slug).md and ~/.codex/prompts/\(prompt.slug).md (⇧⌘T)")
+            ViewThatFits(in: .horizontal) {
+                VStack(alignment: .leading, spacing: 3) {
+                    row("Claude Code", "/\(prompt.slug)", stacked: false)
+                    row("Codex", "/prompts:\(prompt.slug)", stacked: false)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    row("Claude Code", "/\(prompt.slug)", stacked: true)
+                    row("Codex", "/prompts:\(prompt.slug)", stacked: true)
+                }
+            }
+            .opacity(prompt.exportCommand ? 1 : 0.55)
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ agent: String, _ command: String, stacked: Bool) -> some View {
+        let cmd = Text(command)
+            .font(.system(size: 11, design: .monospaced))
+            .foregroundStyle(Folio.ink)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .textSelection(.enabled)
+        if stacked {
+            VStack(alignment: .leading, spacing: 1) { Caps(agent, size: 10); cmd }
+        } else {
+            HStack { Caps(agent, size: 10).fixedSize(); Spacer(minLength: 8); cmd.fixedSize() }
+        }
+    }
+}
+
+struct RecordSection: View {
+    @Environment(AppModel.self) private var model
+    let prompt: Prompt
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MarginHeading(title: "Record")
+            line("Written", prompt.createdAt.formatted(date: .abbreviated, time: .omitted))
+            line("Edited", prompt.updatedAt.formatted(date: .abbreviated, time: .shortened))
+            line("Played", prompt.useCount == 0 ? "never" : "\(prompt.useCount)×" + (prompt.lastUsedAt.map { ", last \($0.relative) ago" } ?? ""))
+            Button {
+                model.flushSave(); try? model.store.snapshot(prompt.id); model.historyTarget = prompt
+            } label: {
+                Text("Earlier versions…").underline(color: Folio.rule).foregroundStyle(Folio.ink)
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12))
+            .padding(.top, 2)
+        }
+    }
+
+    private func line(_ k: String, _ v: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Caps(k, size: 10)
+            Spacer()
+            Text(v).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Folio.ink)
+        }
+    }
+}
+
+/// Downsampled thumbnails via ImageIO. It never decodes a full 40 MP screenshot just to show 34 px.
 enum Thumbs {
     static let cache = NSCache<NSString, NSImage>()
 

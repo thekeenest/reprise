@@ -3,3 +3,10 @@ dist/
 .swiftpm/
 *.xcodeproj/xcuserdata/
 .DS_Store
+
+# Impeccable runtime and reference boards (kept local)
+.impeccable/build/
+.impeccable/mocks/
+.impeccable/questions/
+.impeccable/review/
+.impeccable/reference/

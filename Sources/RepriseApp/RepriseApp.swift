@@ -6,23 +6,23 @@ import RepriseCore
 struct RepriseApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel.shared
-    @AppStorage("look") private var look: Look = .liquid
+    @LookSetting private var look
 
     var body: some Scene {
         WindowGroup("Reprise", id: "main") {
             ContentView()
                 .environment(model)
-                .preferredColorScheme(look == .ink ? .dark : nil)
-                .frame(minWidth: 940, minHeight: 560)
+                .preferredColorScheme(look.scheme)
+                .frame(minWidth: 980, minHeight: 580)
         }
         .windowToolbarStyle(.unified)
-        .defaultSize(width: 1280, height: 800)
+        .defaultSize(width: 1440, height: 880)
         .commands { RepriseCommands(model: model) }
 
         Settings {
             SettingsView()
                 .environment(model)
-                .preferredColorScheme(look == .ink ? .dark : nil)
+                .preferredColorScheme(look.scheme)
         }
 
         MenuBarExtra {
@@ -30,6 +30,7 @@ struct RepriseApp: App {
         } label: {
             Image(systemName: "repeat")
         }
+        .menuBarExtraStyle(.menu)
     }
 }
 
@@ -50,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 struct RepriseCommands: Commands {
     let model: AppModel
-    @AppStorage("look") private var look: Look = .liquid
+    @LookSetting private var look
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -66,12 +67,13 @@ struct RepriseCommands: Commands {
             Button("Export Library as Markdown…") { exportLibrary() }.keyboardShortcut("e", modifiers: [.command, .shift])
         }
         CommandMenu("Prompt") {
-            Button("Use (Fill & Copy)") { if let id = model.selectedID { model.use(id) } }.keyboardShortcut(.return, modifiers: .command)
+            Button("Use (Copy Filled)") { if let id = model.selectedID { model.use(id) } }.keyboardShortcut(.return, modifiers: .command)
             Button("Copy Source") { if let id = model.selectedID { model.copyRaw(id) } }.keyboardShortcut("c", modifiers: [.command, .shift])
             Button("Pin / Unpin") { if let id = model.selectedID { model.togglePin(id) } }.keyboardShortcut("p", modifiers: [.command, .shift])
             Button("Duplicate") { if let id = model.selectedID { model.duplicate(id) } }.keyboardShortcut("d")
             Button("Shuffle Color") { model.update { $0.color = Palette.random() } }.keyboardShortcut("k", modifiers: [.command, .shift])
             Button("Toggle Agent Command") { if let id = model.selectedID { model.toggleAgentCommand(id) } }.keyboardShortcut("t", modifiers: [.command, .shift])
+            Button("Show or Hide Margin") { model.showMargin.toggle() }.keyboardShortcut("0", modifiers: [.command, .option])
             Divider()
             Button("Sync Agent Commands Now") { model.syncAgents(silent: false) }
             Divider()
@@ -79,7 +81,10 @@ struct RepriseCommands: Commands {
         }
         CommandGroup(after: .toolbar) {
             Picker("Look", selection: $look) {
-                ForEach(Look.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(Look.allCases) { Text($0.name).tag($0) }
+            }
+            Picker("Design", selection: Binding(get: { World.current }, set: { World.set($0) })) {
+                ForEach(World.allCases) { Text($0.rawValue).tag($0) }
             }
             Button("Next Look") {
                 let all = Look.allCases
@@ -98,7 +103,7 @@ struct RepriseCommands: Commands {
         let sid = model.project(model.targetProjectID)?.spaceID ?? model.spaces.first?.id ?? 1
         let n = (try? MarkdownIO.importFiles(panel.urls, store: model.store, spaceID: sid)) ?? 0
         model.reloadStructure(); model.reloadList()
-        model.show("Imported \(n) prompts", icon: "square.and.arrow.down.fill", color: "#4D7CFE")
+        model.show("Imported \(n) prompts")
     }
 
     @MainActor private func exportLibrary() {
@@ -109,86 +114,76 @@ struct RepriseCommands: Commands {
         panel.prompt = "Export Here"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let n = (try? MarkdownIO.export(store: model.store, to: url.appendingPathComponent("Reprise Library"))) ?? 0
-        model.show("Exported \(n) prompts as Markdown", icon: "square.and.arrow.up.fill", color: "#4D7CFE")
+        model.show("Exported \(n) prompts as Markdown")
         NSWorkspace.shared.activateFileViewerSelecting([url.appendingPathComponent("Reprise Library")])
     }
 }
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("look") private var look: Look = .liquid
+    @LookSetting private var look
+    @AppStorage("world") private var worldRaw = ""
 
     var body: some View {
         @Bindable var model = model
+        let _ = worldRaw
         NavigationSplitView {
             SidebarView()
         } content: {
             PromptListView()
-                .background {
-                    if look == .ink { Color(white: 0.055).ignoresSafeArea() }
-                    else { Aura(color: Color(hex: model.accentHex), look: look).opacity(0.45).ignoresSafeArea() }
-                }
         } detail: {
             EditorView()
         }
-        .searchable(text: $model.query, placement: .toolbar, prompt: "Search every prompt")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { model.newPrompt() } label: { Label("New Prompt", systemImage: "square.and.pencil") }
-                    .help("New prompt (⌘N)")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button { QuickPanelController.shared.toggle() } label: { Label("Quick Panel", systemImage: "command") }
-                    .help("Quick Panel (\(UserDefaults.standard.string(forKey: "hotkey") ?? "⌥⌘P"))")
-            }
-        }
-        .overlay(alignment: .top) {
+        .searchable(text: $model.query, placement: .sidebar, prompt: "Search")
+        .overlay(alignment: .bottom) {
             if let t = model.toast {
                 ToastView(toast: t)
-                    .padding(.top, 10)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.bottom, 22)
+                    .transition(.opacity.combined(with: .offset(y: 6)))
             }
         }
-        .fontDesign(look == .ink ? .monospaced : .default)
         .sheet(item: $model.fillTarget) { FillSheet(prompt: $0) }
         .sheet(item: $model.historyTarget) { HistorySheet(prompt: $0) }
         .sheet(item: $model.namingRequest) { NamingSheet(request: $0) }
         .sheet(isPresented: $model.showHarvest) { HarvestView() }
-        .tint(Color(hex: model.accentHex))
+        .id(worldRaw)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .tint(Folio.ink)
     }
 }
 
+/// A printed slip: paper, hairline border, small text. No color unless something went wrong.
 struct ToastView: View {
     let toast: AppModel.Toast
     var body: some View {
-        Label(toast.text, systemImage: toast.icon)
-            .font(.callout.weight(.medium))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(Color(hex: toast.color))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 9)
-            .glassEffect(.regular.tint(Color(hex: toast.color).opacity(0.15)), in: .capsule)
+        HStack(spacing: 8) {
+            Image(systemName: toast.isError ? "exclamationmark.triangle" : "checkmark")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(toast.isError ? Folio.rubric : Folio.slate)
+            Text(toast.text)
+                .font(.system(size: 12.5))
+                .foregroundStyle(Folio.ink)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Folio.paper, in: RoundedRectangle(cornerRadius: Folio.radius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Folio.radius, style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
 }
 
-/// The brand mark: the musical repeat sign ( 𝄇 ) — two dots and a double bar — on glass.
+/// The brand mark: the musical repeat sign. A thin and a thick bar in ink, two dots in rubric.
 struct RepriseMark: View {
     var size: CGFloat = 32
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(LinearGradient(colors: [Color(hex: "#7A5CFA"), Color(hex: "#F05CC8"), Color(hex: "#FF8E3C")],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-            HStack(spacing: size * 0.075) {
-                VStack(spacing: size * 0.14) {
-                    Circle().frame(width: size * 0.12, height: size * 0.12)
-                    Circle().frame(width: size * 0.12, height: size * 0.12)
-                }
-                Capsule().frame(width: size * 0.055, height: size * 0.5)
-                Capsule().frame(width: size * 0.13, height: size * 0.5)
+        HStack(spacing: size * 0.09) {
+            VStack(spacing: size * 0.2) {
+                Circle().fill(Folio.rubric).frame(width: size * 0.15, height: size * 0.15)
+                Circle().fill(Folio.rubric).frame(width: size * 0.15, height: size * 0.15)
             }
-            .foregroundStyle(.white)
-            .shadow(color: .black.opacity(0.2), radius: size * 0.03, y: size * 0.02)
+            Rectangle().fill(Folio.ink).frame(width: size * 0.06, height: size * 0.8)
+            Rectangle().fill(Folio.ink).frame(width: size * 0.17, height: size * 0.8)
         }
         .frame(width: size, height: size)
     }

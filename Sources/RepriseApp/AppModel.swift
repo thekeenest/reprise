@@ -22,6 +22,9 @@ final class AppModel {
     var current: Prompt?
     var attachments: [Attachment] = []
     var liveStats = LiveStats()
+    /// The margin apparatus for the open prompt, refreshed on load and on each (debounced) save.
+    var blanks: [Template.Variable] = []
+    var includes: [String] = []
 
     // Sheets & transient UI
     var fillTarget: Prompt?
@@ -30,6 +33,14 @@ final class AppModel {
     var showHarvest = false
     var toast: Toast?
     var focusTitle = false
+    /// The margin apparatus beside the page (blanks, includes, files, publishing).
+    var showMargin = UserDefaults.standard.object(forKey: "showMargin") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showMargin, forKey: "showMargin") }
+    }
+    /// Values typed into the margin's blanks for the current prompt.
+    var fillValues: [String: String] = [:] {
+        didSet { if let id = current?.id { Prefs.rememberValues(fillValues, for: id) } }
+    }
 
     @ObservationIgnored private var pendingBody: (ID, String)?
     @ObservationIgnored private var saveWork: DispatchWorkItem?
@@ -45,8 +56,7 @@ final class AppModel {
     struct Toast: Identifiable, Equatable {
         let id = UUID()
         var text: String
-        var icon: String = "checkmark.circle.fill"
-        var color: String = "#3DDC97"
+        var isError = false
     }
 
     struct NamingRequest: Identifiable {
@@ -96,21 +106,13 @@ final class AppModel {
         }
         current = p
         attachments = (try? store.attachments(id)) ?? []
+        fillValues = Prefs.lastValues(for: id)
+        refreshApparatus()
         updateStats(p.body)
     }
 
     func project(_ id: ID) -> Project? { projects.first { $0.id == id } }
     func space(_ id: ID) -> Space? { spaces.first { $0.id == id } }
-
-    /// Color driving the aura: selected prompt → selected project → space → brand violet.
-    var accentHex: String {
-        if let c = current { return c.color }
-        switch scope {
-        case .project(let id): return project(id)?.color ?? "#7A5CFA"
-        case .space(let id): return space(id)?.color ?? "#7A5CFA"
-        default: return "#7A5CFA"
-        }
-    }
 
     // MARK: Editing
 
@@ -148,8 +150,32 @@ final class AppModel {
             items[i].updatedAt = Date()
             if let t = current?.title, current?.id == id { items[i].title = t }
         }
+        if current?.id == id { refreshApparatus() }
         updateStats(text)
         liveStats.saved = true
+    }
+
+    func refreshApparatus() {
+        guard let p = current else { blanks = []; includes = []; return }
+        blanks = store.variables(p)
+        if p.body.contains("{{>") || p.body.contains("{{ >") {
+            var seen = Set<String>()
+            includes = Template.tokenize(p.body).compactMap { t in
+                if case .include(let n) = t, seen.insert(n).inserted { return n }
+                return nil
+            }
+        } else {
+            includes = []
+        }
+    }
+
+    func open(named title: String) {
+        guard let p = try? store.prompt(named: title) else { show("No prompt named “\(title)”", error: true); return }
+        flushSave()
+        if scope != .all, !items.contains(where: { $0.id == p.id }) { scope = .all }
+        query = ""
+        reloadList()
+        selectedID = p.id
     }
 
     func updateStats(_ text: String) {
@@ -161,7 +187,7 @@ final class AppModel {
             inWord = !ws
         }
         liveStats = LiveStats(characters: text.count, words: words, tokens: Template.estimateTokens(text),
-                              variables: Template.variables(in: text).count, saved: pendingBody == nil)
+                              variables: blanks.count, saved: pendingBody == nil)
     }
 
     func update(_ mutate: (inout Prompt) -> Void) {
@@ -227,7 +253,7 @@ final class AppModel {
         if selectedID == id { selectedID = nil }
         reloadList()
         if selectedID == nil { selectedID = items.first?.id }
-        show(restoring ? "Restored" : "Moved to Trash", icon: restoring ? "arrow.uturn.backward" : "trash", color: "#8E9AAF")
+        show(restoring ? "Restored" : "Moved to Trash")
     }
 
     func deleteForever(_ id: ID) {
@@ -242,7 +268,7 @@ final class AppModel {
         try? store.move(id, toProject: projectID)
         if current?.id == id { current?.projectID = projectID }
         reloadList(); reloadStructure()
-        show("Moved to \(project(projectID)?.name ?? "project")", icon: "arrow.right.circle.fill", color: project(projectID)?.color ?? "#4D7CFE")
+        show("Moved to \(project(projectID)?.name ?? "project")")
     }
 
     func setColor(_ id: ID, _ hex: String) {
@@ -250,10 +276,12 @@ final class AppModel {
         else if var p = try? store.prompt(id) { p.color = hex; try? store.updatePrompt(p); reloadList() }
     }
 
-    /// "Use" = the primary action. Templates open the fill sheet; plain prompts copy immediately.
+    /// "Use" = the primary action. The open prompt copies with the margin's values;
+    /// another template opens the fill sheet; plain prompts copy immediately.
     func use(_ id: ID) {
         flushSave()
         guard let p = try? store.prompt(id) else { return }
+        if id == current?.id { copy(p, values: fillValues); return }
         if !store.variables(p).isEmpty { fillTarget = p; return }
         copy(p, values: [:])
     }
@@ -263,14 +291,14 @@ final class AppModel {
         Paster.copy(text, images: Prefs.includeAttachmentPaths ? [] : imageURLs(p.id))
         try? store.markUsed(p.id)
         Prefs.rememberValues(values, for: p.id)
-        show("Copied “\(p.title)” · \(Template.estimateTokens(text).formatted()) tokens", color: p.color)
+        show("Copied “\(p.title)”, \(Template.estimateTokens(text).formatted()) tokens")
     }
 
     func copyRaw(_ id: ID) {
         flushSave()
         guard let p = try? store.prompt(id) else { return }
         Paster.copy(p.body)
-        show("Copied source of “\(p.title)”", icon: "doc.on.doc.fill", color: p.color)
+        show("Copied the source of “\(p.title)”")
     }
 
     func imageURLs(_ id: ID) -> [URL] {
@@ -283,14 +311,14 @@ final class AppModel {
         guard let id = current?.id else { return }
         for f in files { _ = try? store.addFile(id, from: f) }
         attachments = (try? store.attachments(id)) ?? []
-        show("Attached \(files.count) file\(files.count == 1 ? "" : "s")", icon: "paperclip", color: current?.color ?? "#4D7CFE")
+        show("Attached \(files.count) file\(files.count == 1 ? "" : "s")")
     }
 
     func attach(imageData: Data, ext: String) {
         guard let id = current?.id else { return }
         _ = try? store.addImageData(id, data: imageData, ext: ext)
         attachments = (try? store.attachments(id)) ?? []
-        show("Image attached", icon: "photo.fill", color: current?.color ?? "#4D7CFE")
+        show("Image attached")
     }
 
     func attach(link: String) {
@@ -325,12 +353,12 @@ final class AppModel {
     func save(_ p: Project) { try? store.updateProject(p); reloadStructure() }
 
     func deleteSpace(_ s: Space) {
-        guard spaces.count > 1 else { show("Keep at least one space", icon: "exclamationmark.triangle.fill", color: "#FFC145"); return }
+        guard spaces.count > 1 else { show("Keep at least one space", error: true); return }
         try? store.deleteSpace(s.id); scope = .all; reloadStructure(); reloadList()
     }
 
     func deleteProject(_ p: Project) {
-        guard projects.count > 1 else { show("Keep at least one project", icon: "exclamationmark.triangle.fill", color: "#FFC145"); return }
+        guard projects.count > 1 else { show("Keep at least one project", error: true); return }
         try? store.deleteProject(p.id); scope = .all; reloadStructure(); reloadList()
     }
 
@@ -345,7 +373,7 @@ final class AppModel {
         let id = p.id
         selectedID = nil
         selectedID = id
-        show("Restored version from \(v.createdAt.formatted(date: .abbreviated, time: .shortened))", icon: "clock.arrow.circlepath", color: p.color)
+        show("Restored the version from \(v.createdAt.formatted(date: .abbreviated, time: .shortened))")
     }
 
     // MARK: Agents
@@ -353,23 +381,23 @@ final class AppModel {
     func syncAgents(silent: Bool) {
         do {
             let r = try AgentSync.sync(store: store, targets: Prefs.syncTargets)
-            if !silent { show("Agent commands: \(r.summary)", icon: "terminal.fill", color: "#2EC4B6") }
+            if !silent { show("Agent commands: \(r.summary)") }
         } catch {
-            show("Sync failed: \(error.localizedDescription)", icon: "xmark.octagon.fill", color: "#FF6B6B")
+            show("Sync failed: \(error.localizedDescription)", error: true)
         }
     }
 
     func importHarvest(_ candidates: [Harvest.Candidate], projectID: ID) {
         for c in candidates { _ = try? store.createPrompt(projectID: projectID, title: c.suggestedTitle, body: c.text) }
         reloadStructure(); reloadList()
-        show("Saved \(candidates.count) harvested prompt\(candidates.count == 1 ? "" : "s")", icon: "leaf.fill", color: "#3DDC97")
+        show("Saved \(candidates.count) harvested prompt\(candidates.count == 1 ? "" : "s")")
     }
 
     // MARK: Toasts
 
-    func show(_ text: String, icon: String = "checkmark.circle.fill", color: String = "#3DDC97") {
-        let t = Toast(text: text, icon: icon, color: color)
-        withAnimation(.spring(duration: 0.35)) { toast = t }
+    func show(_ text: String, error: Bool = false) {
+        let t = Toast(text: text, isError: error)
+        withAnimation(.easeOut(duration: 0.18)) { toast = t }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) { [weak self] in
             if self?.toast?.id == t.id { withAnimation(.easeOut(duration: 0.3)) { self?.toast = nil } }
         }

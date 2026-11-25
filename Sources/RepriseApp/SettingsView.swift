@@ -14,54 +14,90 @@ struct SettingsView: View {
 }
 
 struct AppearanceSettings: View {
-    @AppStorage("look") private var look: Look = .liquid
-    @AppStorage("editorFont") private var editorFont: EditorFont = .mono
-    @AppStorage("editorSize") private var editorSize: Double = 14
+    @LookSetting private var look
+    @AppStorage("world") private var worldRaw = ""
+    @AppStorage("editorFontChoice") private var fontChoice = ""
+    @AppStorage("editorSizeChoice") private var sizeChoice: Double = 0
 
     var body: some View {
+        let _ = worldRaw
         Form {
-            Section("Look") {
-                HStack(spacing: 14) {
-                    ForEach(Look.allCases) { l in
-                        Button { look = l } label: {
-                            VStack(spacing: 8) {
-                                LookSwatch(look: l)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.accentColor, lineWidth: look == l ? 2.5 : 0))
-                                Text(l.rawValue).font(.callout.weight(.semibold))
-                                Text(l.subtitle).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Section("Design") {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(World.allCases) { w in
+                        Button { World.set(w) } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                WorldSwatch(style: w.style, dark: look == .iron)
+                                    .overlay(Rectangle().strokeBorder(World.current == w ? Folio.ink : Folio.rule,
+                                                                      lineWidth: World.current == w ? 1.5 : 1))
+                                Text(w.rawValue).font(.system(size: 12.5, weight: .medium))
+                                Text(w.blurb).font(.system(size: 11)).foregroundStyle(Folio.slate)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
-                            .frame(width: 150)
+                            .frame(width: 148, alignment: .leading)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
-            Section("Editor") {
-                Picker("Font", selection: $editorFont) { ForEach(EditorFont.allCases) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.segmented)
-                Slider(value: $editorSize, in: 11...22, step: 1) { Text("Size  \(Int(editorSize)) pt") }
+            Section("Look") {
+                Picker("Look", selection: $look) {
+                    ForEach(Look.allCases) { Text($0.name).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Text("\(look.subtitle). ⇧⌘L cycles looks.").font(.system(size: 11)).foregroundStyle(Folio.slate)
+            }
+            Section("Text") {
+                Picker("Typeface", selection: $fontChoice) {
+                    Text("Auto").tag("")
+                    ForEach(EditorFont.allCases) { Text($0.rawValue).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented)
+                Slider(value: Binding(get: { sizeChoice > 0 ? sizeChoice : Folio.style.editorSize }, set: { sizeChoice = $0 }),
+                       in: 12...22, step: 0.5) {
+                    Text("Size  \(String(format: "%g", sizeChoice > 0 ? sizeChoice : Folio.style.editorSize)) pt")
+                }
             }
         }
         .formStyle(.grouped)
     }
 }
 
-struct LookSwatch: View {
-    let look: Look
+/// A miniature page drawn straight from a world's tokens, so all three can be compared side by side.
+struct WorldSwatch: View {
+    let style: Style
+    var dark = false
+    private func c(_ p: Style.Pair) -> Color { Color(hex: dark ? p.dark : p.light) }
+
     var body: some View {
-        ZStack {
-            Aura(color: Color(hex: "#7A5CFA"), look: look)
+        let r = style.radius
+        HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
-                RoundedRectangle(cornerRadius: 3).frame(width: 60, height: 7).opacity(0.7)
-                RoundedRectangle(cornerRadius: 3).frame(width: 90, height: 5).opacity(0.35)
-                RoundedRectangle(cornerRadius: 3).frame(width: 74, height: 5).opacity(0.35)
+                Text("Aa")
+                    .font(.system(size: 15, weight: style.titleWeight, design: style.textDesign))
+                    .foregroundStyle(c(style.ink))
+                Rectangle().fill(c(style.ink).opacity(0.2)).frame(height: 1)
+                Rectangle().fill(c(style.slate).opacity(0.6)).frame(width: 70, height: 3)
+                HStack(spacing: 3) {
+                    Rectangle().fill(c(style.slate).opacity(0.6)).frame(width: 26, height: 3)
+                    Rectangle().fill(c(style.accent)).frame(width: 18, height: 3)
+                    Rectangle().fill(c(style.slate).opacity(0.6)).frame(width: 18, height: 3)
+                }
             }
             .padding(10)
-            .surface(look, tint: Color(hex: "#7A5CFA"), radius: 10)
+            Spacer(minLength: 0)
+            Rectangle().fill(c(style.ink).opacity(0.15)).frame(width: 1)
+            VStack(alignment: .leading, spacing: 6) {
+                RoundedRectangle(cornerRadius: min(r, 2)).fill(c(style.accent)).frame(width: 7, height: 7)
+                RoundedRectangle(cornerRadius: min(r, 3))
+                    .fill(style.primaryFilled ? c(style.accent) : .clear)
+                    .overlay(RoundedRectangle(cornerRadius: min(r, 3)).strokeBorder(c(style.accent), lineWidth: 1))
+                    .frame(width: 28, height: 9)
+            }
+            .padding(8)
         }
-        .frame(width: 140, height: 84)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .environment(\.colorScheme, look == .ink ? .dark : .light)
+        .frame(width: 148, height: 80)
+        .background(c(style.paper))
     }
 }
 
@@ -82,7 +118,7 @@ struct BehaviorSettings: View {
                 if autoPaste && !trusted {
                     HStack {
                         Label("Needs Accessibility permission to press ⌘V for you.", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange).font(.callout)
+                            .foregroundStyle(Folio.rubric).font(.callout)
                         Spacer()
                         Button("Grant…") { Paster.requestAccessibility() }
                     }

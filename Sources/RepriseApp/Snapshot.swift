@@ -40,7 +40,7 @@ enum Snapshot {
             steps.append(("main-\(look.rawValue.lowercased())", { UserDefaults.standard.set(look.rawValue, forKey: "look") }))
         }
         steps.append(("quick-panel", {
-            UserDefaults.standard.set(Look.liquid.rawValue, forKey: "look")
+            UserDefaults.standard.set(Look.bone.rawValue, forKey: "look")
             QuickPanelController.shared.show()
         }))
 
