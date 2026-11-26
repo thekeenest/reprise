@@ -12,7 +12,7 @@ Agent-native builders: senior engineers, indie hackers and technical founders on
 
 ## Product Purpose
 
-Reprise is where those prompts are written, refined and kept, and from where they are fired into agents. **The main window exists for writing, refining and running prompts.** The user first named writing as the job; after trying a writing-first build they asked for designs that differ in structure, so Reprise ships three: launcher-first (Console), spatial (Board) and editor-first (Studio). In all three, running a prompt (fill the blanks, see the payload, copy) is one click from anywhere, and New Prompt is always visible. Fast retrieval lives in the ⌥⌘P Quick Panel, the CLI and the MCP server. Success: a user moves their working prompt set out of Apple Notes and shell history, and reaches for Reprise every time they start an agent task.
+Reprise is where those prompts are written, refined and kept, and from where they are fired into agents. **The main window exists for writing, refining and running prompts.** The page is the primary surface and gets the most room. The library (spaces → projects → prompts, all user-defined) is a quiet list beside it, and running a prompt (fill the blanks, Copy) happens in a narrow inspector next to the page. Fast retrieval lives in the ⌥⌘P Quick Panel, the CLI and the MCP server. Success: a user moves their working prompt set out of Apple Notes and shell history, and reaches for Reprise every time they start an agent task.
 
 ## Positioning
 

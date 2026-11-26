@@ -1,67 +1,75 @@
 ---
 name: Reprise
-description: A native Mac prompt studio in three structurally different designs, dark by default.
+description: A native Mac prompt studio. One structure, two finishes (Solid, Glass), two accents (Coral, Wine), dark by default.
 colors:
-  # Console (the default build, Reprise.app), dark theme. Board and Studio are documented below
-  # and live in Sources/RepriseApp/Theme.swift.
-  ground: "#111113"
-  ground-deep: "#0B0B0C"
-  raised: "#18181B"
-  ink: "#EDEDEF"
-  slate: "#9A9AA3"
-  ash: "#5C5C63"
-  signal: "#FF7452"
-  fill: "#FF6A45"
-  on-fill: "#160B07"
-  light-ground: "#F7F7F8"
-  light-ink: "#18181B"
-  light-signal: "#E5532F"
+  # Solid finish, dark theme, Coral accent: the default build (Reprise.app).
+  ground: "#161514"
+  ground-mid: "#131211"
+  ground-deep: "#0F0E0D"
+  raised: "#1F1E1C"
+  ink: "#ECE9E1"
+  slate: "#A6A39B"
+  ash: "#6F6C65"
+  coral: "#EF6A52"
+  coral-fill: "#E85A40"
+  wine: "#D0566B"
+  wine-fill: "#8E2236"
+  on-fill: "#FFFFFF"
+  light-ground: "#F7F5F0"
+  light-ink: "#1B1A18"
+  light-coral: "#B8321F"
+  light-wine: "#8E1F38"
 typography:
   title:
-    fontFamily: "SF Pro Display, system-ui, sans-serif"
-    fontSize: "22px"
-    fontWeight: 600
-    letterSpacing: "-0.014em"
-  search:
-    fontFamily: "SF Pro Text, system-ui, sans-serif"
-    fontSize: "18px"
+    fontFamily: "New York, ui-serif, serif"
+    fontSize: "28px"
     fontWeight: 400
-  row:
-    fontFamily: "SF Pro Text, system-ui, sans-serif"
-    fontSize: "13.5px"
+  page:
+    fontFamily: "New York, ui-serif, serif"
+    fontSize: "15px"
     fontWeight: 400
-  body:
-    fontFamily: "SF Pro Text, system-ui, sans-serif"
-    fontSize: "14px"
+    lineHeight: 1.45
+  entry:
+    fontFamily: "New York, ui-serif, serif"
+    fontSize: "14.5px"
     fontWeight: 400
-    lineHeight: 1.5
+  control:
+    fontFamily: "SF Pro Text, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
   caption:
     fontFamily: "SF Pro Text, system-ui, sans-serif"
-    fontSize: "11.5px"
+    fontSize: "10.5px"
     fontWeight: 500
+    letterSpacing: "0.08em"
   placeholder:
     fontFamily: "SF Mono, ui-monospace, monospace"
     fontSize: "13px"
     fontWeight: 600
 rounded:
   control: "8px"
-  card: "14px"
-spacing:
   row: "7px"
-  gutter: "20px"
-  panel: "28px"
-  bar: "60px"
+  field: "7px"
+  glass-control: "999px"
+  glass-pane: "18px"
+spacing:
+  pane-gap-glass: "8px"
+  toolbar: "52px"
+  sidebar: "228px"
+  outline: "286px"
+  list: "292px"
+  inspector: "286px"
 components:
   button-primary:
-    backgroundColor: "{colors.fill}"
+    backgroundColor: "{colors.coral-fill}"
     textColor: "{colors.on-fill}"
     rounded: "{rounded.control}"
     height: "30px"
   button-copy:
-    backgroundColor: "{colors.fill}"
+    backgroundColor: "{colors.coral-fill}"
     textColor: "{colors.on-fill}"
     rounded: "{rounded.control}"
-    height: "38px"
+    height: "32px"
   button-ghost:
     backgroundColor: "{colors.ground}"
     textColor: "{colors.ink}"
@@ -70,109 +78,111 @@ components:
   field:
     backgroundColor: "{colors.raised}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.control}"
+    rounded: "{rounded.field}"
     padding: "7px 10px"
-  result-row-selected:
-    backgroundColor: "{colors.raised}"
-    textColor: "{colors.ink}"
-    typography: "{typography.row}"
-    rounded: "{rounded.control}"
 ---
 
 # Design System: Reprise
 
 ## Overview
 
-Reprise is where agent-native builders keep the prompts they run again and again. The design problem was that a prompt library drifts toward the notes-app skeleton (sidebar, list, editor), and that skeleton reads as "another notes app" however it's styled. Recoloring it didn't help: three palettes on one layout still looked like one notes app.
+Reprise is where agent-native builders write and keep the prompts they run again and again. After three rounds of exploration (an annotated book page, three structural apps, and the user's notes on each), the design settled on one structure built from the parts the user kept:
 
-So Reprise ships **three designs with three different structures**. Each is its own build, and all three share one library:
+- From the Studio round: **the page**. It gets the most room, uses New York text, highlights placeholders in color, and shows the token count and save state on the line under the title.
+- From the 0.2 Edition: **the Notes-style library**. Spaces and projects sit in a sidebar, with a list of prompts top to bottom.
+- From the 0.2 margin: **a narrow inspector** that keeps the blanks first and folds everything else away.
+- From the Liquid Glass reference: **a glass finish** with floating gradient panes, lit edges and capsule controls.
 
-| Design | Build | Structure | Reference class |
-|---|---|---|---|
-| **Console** (default) | `Reprise.app` | Launcher-first: one search field, results, a run panel, an action bar. No sidebar. | Raycast, Superhuman |
-| **Board** | `Reprise Board.app` | Spatial: spaces as tabs, projects as columns, prompts as tiles. Run and edit in focused cards over the board. | Linear's board view |
-| **Studio** | `Reprise Studio.app` | Editor-first: prompts in tabs, the library as a ⌘P palette, a run inspector beside the page. | Zed, iA Writer |
+Three things vary between builds, and Settings switches each of them live:
 
-Three rules hold in every design:
+| | Options | Default |
+|---|---|---|
+| Finish | Solid, Glass | Solid |
+| Accent | Coral, Wine | Coral |
+| Library | Two columns (sidebar + list), One column (outline) | Two columns |
+| Theme | Dark, Light, Match System | **Dark** |
 
-1. **One way out.** The only primary action is **Copy Prompt** (⌘↩): blanks filled, includes expanded, file paths appended. "Copy template source" is a secondary menu item, never a toolbar button.
-2. **New Prompt is always visible.** It is the filled button at the top right of every design. New Project and New Space live where projects and spaces are shown.
-3. **Dark by default.** Theme is a setting (Dark, Light, Match System) in every design. There is no tinted glass.
+## Rules
+
+1. **Buttons hug their content.** No button stretches to the width of the field above it. Copy Prompt is about as wide as its words.
+2. **Every corner is rounded.** Solid uses 7–8 pt radii on controls and rows. Glass uses capsules for controls and 18 pt for panes. Nothing is square.
+3. **One way out.** Copy Prompt (⌘↩) is the only primary action on a prompt, and it lives directly under the blanks. Copy Template Source lives in the ⋯ menu.
+4. **New Prompt is always visible**, as the filled button at the top right of the page.
+5. **The hierarchy belongs to the user.** Spaces and projects are created, renamed (double-click), recolored, moved and deleted in the sidebar. The place line under the title is a menu of all projects, plus New Project and New Space. Deleting a container never deletes prompts.
+6. **Quiet by default.** The inspector shows the blanks. Includes, files, agents and record are folded into one line each, with a summary on the right.
+7. **Main buttons respond visibly to hover.** The fill brightens, the button grows 3%, an accent glow appears beneath it, and a sheen sweeps across once. New Prompt's plus turns a quarter. Ghost buttons take an accent edge; icon buttons get a soft circle.
 
 ## Colors
 
-Each design has one ground ramp (ground, deep, raised), one ink ramp (ink, slate, ash) and one signal color. The signal appears only on blanks, the caret, the primary button and the selected tab. Project colors are 6–8pt square keys and never tint a surface.
+Neutrals are warm iron in dark and bone in light. There is one accent at a time.
 
-| Role | Console | Board | Studio |
-|---|---|---|---|
-| ground (dark / light) | `#111113` / `#F7F7F8` | `#0E0F10` / `#FBFBFA` | `#161514` / `#F3F1EB` |
-| deep | `#0B0B0C` / `#EEEEF0` | `#08090A` / `#F2F2F0` | `#0F0E0D` / `#EAE7DF` |
-| raised (fields, tiles, cards) | `#18181B` / `#FFFFFF` | `#161719` / `#FFFFFF` | `#1D1C1A` / `#FBFAF6` |
-| ink | `#EDEDEF` / `#18181B` | `#F2F3F3` / `#141516` | `#ECE9E1` / `#1B1A18` |
-| slate | `#9A9AA3` / `#5E5E66` | `#8B9097` / `#62666D` | `#A6A39B` / `#5F5D57` |
-| ash | `#5C5C63` / `#A1A1AA` | `#565A60` / `#A3A7AD` | `#6F6C65` / `#98958C` |
-| signal (blanks, caret) | coral `#FF7452` / `#E5532F` | mint `#5EE0A8` / `#0F8F5F` | vermilion `#EF6A52` / `#B8321F` |
-| primary fill / label | coral `#FF6A45` / near-black | **ink** (white in dark, black in light) / ground | vermilion `#E85A40` / white |
+| Role | Dark | Light |
+|---|---|---|
+| ground (page) | `#161514` | `#F7F5F0` |
+| mid (list) | `#131211` | `#F1EEE8` |
+| deep (sidebar, inspector) | `#0F0E0D` | `#EAE7E0` |
+| raised (fields, menus) | `#1F1E1C` | `#FFFFFF` |
+| ink / slate / ash | `#ECE9E1` / `#A6A39B` / `#6F6C65` | `#1B1A18` / `#5F5D57` / `#98958C` |
 
-Rules are ink at 8–16% alpha; washes are ink at 3.5–5%.
+| Accent | Text and highlight (dark / light) | Fill (dark / light) |
+|---|---|---|
+| Coral | `#EF6A52` / `#B8321F` | `#E85A40` / `#C2381F` |
+| Wine | `#D0566B` / `#8E1F38` | `#8E2236` / `#7D1A2E` |
 
-### Named Rules
-- **One signal.** If something is colored and isn't a blank, the caret, the primary button or the selected tab, it's wrong.
-- **Board's primary is ink, not color.** Its white-on-black button keeps the board monochrome; mint marks only templates and blanks.
+Burgundy proper (`#800020`) is below 2:1 contrast on near-black, so Wine uses it as a fill under white text and lifts it to `#D0566B` for text-level highlights on dark grounds.
+
+Accent appears on placeholders, the caret, the selection marker, the two filled buttons, focused fields, and the title detent. Project colors appear only as 7–8 pt rounded keys.
+
+### Glass
+
+Glass places each region on its own pane, with an 8 pt gap between panes and from the window edge. The panes sit on the desktop, which is blurred with the HUD material and toned down.
+
+- **Ground (dark):** the blur, a black wash at 42–62%, one accent glow (22%) from the bottom-left corner, and a faint white glow from the top-right.
+- **Pane fill:** a white gradient, 6.5–8.5% at the top falling to 2–3.5% at the bottom. In light, it runs 48–62% falling to 30–42%.
+- **Pane edge:** a 1 pt gradient stroke, white 22% at the top to 4% at the bottom.
+- **Pane shadow:** black 28%, radius 18, y 8.
+- **Fields:** a darker well (black 22%) without a border until focused.
 
 ## Typography
 
-| Role | Console | Board | Studio |
-|---|---|---|---|
-| Title | SF Pro 22 semibold, −0.3 | SF Pro 24 semibold, −0.5 | New York 28 regular |
-| Captions | sentence case 11.5 medium | uppercase 9.5 semibold, +0.8 | small caps 10.5 medium, +0.8 |
-| Editor default | SF Pro 14 / 1.5 | SF Pro 14.5 / 1.55 | New York 15 / 1.45 |
-| Blank keys | numbered caps 1 2 3 | letters A B C | serif letters A B C |
-
-Placeholders in the editor are SF Mono semibold in the signal color, underlined. The editor's face and size can be overridden in Settings → Appearance → Editor text.
+- **Page and titles:** New York. Titles are 28 regular; the page is 15 at 1.45 line height, with a reading measure of 44 × the font size.
+- **Prompt list titles:** New York 14.5.
+- **Controls:** SF Pro 12.5–13.
+- **Captions:** SF small caps 10.5, tracked +0.8. Used for the place line, stats, section names and list metadata.
+- **Placeholders:** SF Mono semibold in the accent, underlined. Includes are slate and underlined. Markdown markers are dimmed.
 
 ## Layout
 
-- **Console:** 60pt command bar (search, scope menu, New Prompt), 340pt results column on the deep ground, run panel (max 760pt) on the ground, 38pt action bar with clickable shortcut hints. Edit mode replaces the run panel with the page plus a 260pt details column.
-- **Board:** 54pt bar (space tabs, filter, New Prompt), then horizontally scrolling 296pt columns with 8pt-gapped tiles. Run card 820×520; edit card up to 1180pt wide.
-- **Studio:** 46pt tab bar (Library ⌘P, tabs, actions, inspector toggle, New Prompt), page on a reading measure (font size × 44), 330pt inspector with Run and Details tabs, 28pt status bar.
-- All windows use a hidden title bar; the traffic lights sit in a quiet strip above the bar.
+| Region | Two columns | One column |
+|---|---|---|
+| Sidebar | 228 pt: search (⌘K), Library, Spaces → Projects, Trash, Harvest | 286 pt: search, filter chips (All, Pinned, Templates, Recent), Spaces → Projects → Prompts |
+| List | 292 pt: scope title, count, sort; New York rows with tokens and age | — |
+| Page | Toolbar (⋯, inspector toggle, New Prompt), then title, detent rule, place and stats line, and the editor | same |
+| Inspector | 286 pt: Blanks, Copy Prompt, folded sections | same |
 
-## Elevation & Depth
-
-Flat surfaces separated by hairlines and by the ground → raised step. Only the overlays float: Board's run and edit cards and Studio's palette sit on a 35–50% black scrim with one soft shadow (radius 30–40, y 14–20).
-
-## Shapes
-
-Console radius 8; Board 10 (tiles, columns); Studio 4. Cards and the palette use 12–14. The Studio tab marks the selected tab with a 2pt signal rule on its top edge.
+⌃⌘S hides the sidebar and ⌥⌘0 hides the inspector. When the inspector is hidden, Copy Prompt moves into the toolbar.
 
 ## Components
 
-### Run panel (shared)
-Blank fields (key and name above a raised field; choices are a field-styled menu), then **What gets copied** (the exact clipboard payload with a token count), then **Copy Prompt ⌘↩**. Board lays it out side by side; Console and Studio stack it.
-
-### Buttons
-- **Filled:** New Prompt and Copy Prompt only.
-- **Ghost:** Edit, Done, Library, scope menu. Hairline border, wash on hover.
-- **Icon:** actions (⋯), inspector toggle, column +. Slate glyph, ink on hover.
-
-### Actions menu (⋯)
-Pin, Duplicate, Move to, Shuffle Color, Copy Template Source, Publish as Slash Command, Earlier Versions, Move to Trash.
-
-### Details (shared)
-Includes, Files & links, Agents (slash-command publishing), Record. Shown in Console's edit mode, in Board's edit card, and in Studio's Details tab.
+- **Filled button** (New Prompt, Copy Prompt, Create): accent fill and a white label. Rounded 8 pt in Solid, a capsule in Glass. Hover behaves as in rule 7.
+- **Ghost button** (Harvest, Add Files, New Space…): an ink wash and a hairline that turns accent on hover.
+- **Icon button** (⋯, sidebar toggles, sort, +): slate glyph; a soft circle on hover.
+- **Blank field:** the name in SF 12 slate above a raised field. Choices use a field-styled menu. There are no key letters or numbers.
+- **Fold:** a chevron, a small-caps title and a right-aligned summary ("1", "none", "off", "never played"), separated by hairlines.
+- **Sidebar rows:** 28 pt tall, rounded 7 pt; selected rows get ink at 10%. Space rows are SF 13 semibold with a chevron, and on hover show + and ⋯. Project rows have a color key, a name and a count, accept dropped prompts, and get an accent outline while a drag is over them.
+- **Selected prompt:** a 3 pt accent capsule at the left edge, plus a soft fill.
 
 ## Do's and Don'ts
 
 ### Do:
-- Keep one filled button per surface region, and name it by what it does.
-- Show the exact output before the copy.
-- Keep New Prompt in the top bar of every design.
-- Check every change in all three designs and in both Dark and Light.
+- Give the page the room. Any new chrome comes out of the sidebar or inspector widths, never the page's.
+- Name both levels of the hierarchy in UI copy: "Space" and "Project".
+- Check every change in Solid and Glass, Coral and Wine, Dark and Light.
 
 ### Don't:
-- Don't reintroduce the sidebar-list-editor skeleton into Console or Board.
-- Don't put two copy-like buttons next to each other.
-- Don't add gradients, glows, tinted glass, side stripes, or eyebrow labels.
-- Don't color surfaces with project colors.
+- Don't stretch buttons to full width.
+- Don't mix square and rounded corners.
+- Don't show the expanded payload in a box. The page is the source of truth, and the token count lives in the stats line.
+- Don't put colored key letters or numbers beside field names.
+- Don't use browser-style tabs.
 - Don't make Light the default.

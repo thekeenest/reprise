@@ -8,68 +8,45 @@ func hex(_ h: String) -> Color {
     return Color(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255)
 }
 
-/// The repeat sign (two dots, a thin and a thick bar) in each world's materials.
+/// The repeat sign (two dots, a thin and a thick bar). Variants: "Coral", "Wine", "Glass", "Glass Wine".
 struct Icon: View {
-    var world: String
+    var variant: String
+    var glass: Bool { variant.hasPrefix("Glass") }
+    var dot: Color { variant.hasSuffix("Wine") ? hex("#C8485E") : hex("#EF6A52") }
 
     var body: some View {
         ZStack {
             // macOS 26 icon grid: 824pt rounded rect inside a 1024 canvas.
-            RoundedRectangle(cornerRadius: 186, style: .continuous)
-                .fill(ground)
-                .overlay(RoundedRectangle(cornerRadius: 186, style: .continuous).strokeBorder(Color.white.opacity(0.06), lineWidth: 3))
-                .frame(width: 824, height: 824)
-                .shadow(color: .black.opacity(0.28), radius: 24, y: 14)
-            switch world {
-            case "Board": board
-            case "Studio": studio
-            default: console
-            }
-        }
-        .frame(width: 1024, height: 1024)
-    }
-
-    var ground: Color {
-        switch world {
-        case "Board": return hex("#0E0F10")
-        case "Studio": return hex("#181715")
-        default: return hex("#121214")
-        }
-    }
-
-    /// Console: the sign set into a search field, coral dots on graphite.
-    var console: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 120, style: .continuous)
-                .fill(hex("#1C1C1F"))
-                .frame(width: 600, height: 600)
-            RoundedRectangle(cornerRadius: 120, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.09), lineWidth: 4)
-                .frame(width: 600, height: 600)
-            sign(ink: hex("#EDEDEF"), dot: hex("#FF6A45"), scale: 0.8, radius: 12)
-        }
-    }
-
-    /// Board: the bars become tiles on three faint columns; mint dots.
-    var board: some View {
-        ZStack {
-            HStack(spacing: 34) {
-                ForEach(0..<3) { _ in
-                    RoundedRectangle(cornerRadius: 40, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 4)
-                        .frame(width: 176, height: 560)
+            let tile = RoundedRectangle(cornerRadius: 186, style: .continuous)
+            Group {
+                if glass {
+                    tile.fill(LinearGradient(colors: [hex("#4A4E57"), hex("#23252B"), hex("#1A1B1F")],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .overlay(tile.fill(RadialGradient(colors: [dot.opacity(0.35), .clear], center: .bottomLeading, startRadius: 0, endRadius: 700)))
+                } else {
+                    tile.fill(hex("#161514"))
                 }
             }
-            sign(ink: hex("#F2F3F3"), dot: hex("#5EE0A8"), scale: 0.86, radius: 26)
-        }
-    }
+            .overlay(tile.strokeBorder(LinearGradient(colors: [Color.white.opacity(glass ? 0.35 : 0.1), Color.white.opacity(0.03)],
+                                                      startPoint: .top, endPoint: .bottom), lineWidth: glass ? 5 : 3))
+            .frame(width: 824, height: 824)
+            .shadow(color: .black.opacity(0.28), radius: 24, y: 14)
 
-    /// Studio: bone ink on iron inside the page's ruled frame, vermilion dots.
-    var studio: some View {
-        ZStack {
-            Rectangle().strokeBorder(hex("#ECE9E1").opacity(0.18), lineWidth: 4).frame(width: 620, height: 620)
-            sign(ink: hex("#ECE9E1"), dot: hex("#EF6A52"), scale: 1, radius: 0)
+            // An inner pane: frosted glass, or a quiet raised page.
+            let pane = RoundedRectangle(cornerRadius: 120, style: .continuous)
+            Group {
+                if glass {
+                    pane.fill(LinearGradient(colors: [Color.white.opacity(0.2), Color.white.opacity(0.06)], startPoint: .top, endPoint: .bottom))
+                        .overlay(pane.strokeBorder(LinearGradient(colors: [Color.white.opacity(0.55), Color.white.opacity(0.08)],
+                                                                  startPoint: .top, endPoint: .bottom), lineWidth: 4))
+                } else {
+                    pane.fill(hex("#1F1E1C")).overlay(pane.strokeBorder(Color.white.opacity(0.08), lineWidth: 4))
+                }
+            }
+            .frame(width: 600, height: 600)
+            sign(ink: hex("#F1EEE7"), dot: dot, scale: 0.8, radius: 14)
         }
+        .frame(width: 1024, height: 1024)
     }
 
     func sign(ink: Color, dot: Color, scale: CGFloat, radius: CGFloat, light: Bool = false) -> some View {
@@ -89,7 +66,7 @@ let out = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arg
 try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
 
 MainActor.assumeIsolated {
-    let r = ImageRenderer(content: Icon(world: CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "Console"))
+    let r = ImageRenderer(content: Icon(variant: CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "Coral"))
     r.scale = 1
     guard let cg = r.cgImage else { fatalError("render failed") }
     let rep = NSBitmapImageRep(cgImage: cg)

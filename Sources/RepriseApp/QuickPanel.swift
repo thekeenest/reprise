@@ -9,7 +9,7 @@ final class QuickPanelController {
     static let shared = QuickPanelController()
     private var panel: QuickPanel?
     private var hotKey: HotKey?
-    private var builtFor: World?
+    private var builtFor: String?
 
     func registerHotKey() {
         hotKey?.invalidate()
@@ -23,9 +23,9 @@ final class QuickPanelController {
 
     @MainActor
     func show() {
-        if panel != nil, builtFor != World.current { panel?.orderOut(nil); panel = nil }
+        if panel != nil, builtFor != Variant.signature { panel?.orderOut(nil); panel = nil }
         if panel == nil {
-            builtFor = World.current
+            builtFor = Variant.signature
             let p = QuickPanel(contentRect: NSRect(x: 0, y: 0, width: 760, height: 470))
             let host = NSHostingView(rootView: QuickPanelView(close: { [weak self] in self?.hide() }).environment(AppModel.shared))
             host.sizingOptions = []
@@ -114,10 +114,10 @@ struct QuickPanelView: View {
         }
         .frame(width: 760, height: 470)
         .foregroundStyle(Folio.ink)
-        .background(Folio.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
-        .tint(Folio.ink)
+        .background { if Variant.glass { WindowGround() } else { Folio.paper } }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Variant.glass ? Color.white.opacity(0.16) : Folio.rule, lineWidth: 1))
+        .tint(Folio.rubric)
         .preferredColorScheme(look.scheme)
         .onAppear(perform: reset)
         .onReceive(NotificationCenter.default.publisher(for: .quickPanelWillShow)) { _ in reset() }
@@ -176,7 +176,6 @@ struct QuickPanelView: View {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(Array(model.store.variables(p).enumerated()), id: \.element.id) { i, v in
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    BlankKey(index: i)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(v.name).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Folio.slate)
                         if v.isChoice {
@@ -349,8 +348,8 @@ struct QuickRow: View {
                 .frame(width: 20, alignment: .leading)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(item.title).font(.text(14.5, weight: selected ? .medium : Folio.style.entryWeight)).lineLimit(1)
-                        .foregroundStyle(selected && Folio.style.selection == .accentTitle ? Folio.rubric : Folio.ink)
+                    Text(item.title).font(.text(14.5, weight: selected ? .medium : .regular)).lineLimit(1)
+                        .foregroundStyle(Folio.ink)
                     if item.pinned { Image(systemName: "pin.fill").font(.system(size: 8.5)).foregroundStyle(Folio.slate) }
                     Spacer(minLength: 6)
                     if item.isTemplate { Caps("template", size: 10) }

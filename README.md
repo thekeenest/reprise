@@ -12,12 +12,12 @@ Templates, projects, a summon-anywhere panel, an MCP server, and an editor that 
 <p>
 <img alt="macOS 26+" src="https://img.shields.io/badge/macOS-26%2B-000?logo=apple&logoColor=white" />
 <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" />
-<img alt="5.3 MB" src="https://img.shields.io/badge/app-5.3%20MB-555" />
+<img alt="5.0 MB" src="https://img.shields.io/badge/app-5.0%20MB-555" />
 <img alt="Local-first" src="https://img.shields.io/badge/data-100%25%20local-555" />
 <img alt="MIT" src="https://img.shields.io/badge/license-MIT-555" />
 </p>
 
-<img src="docs/assets/console.png" alt="Reprise, Console design: search at the top, results on the left, the selected prompt ready to fill and copy on the right" width="100%" />
+<img src="docs/assets/coral.png" alt="Reprise: spaces and projects on the left, the prompt list, the page with highlighted blanks, and the blanks with Copy Prompt on the right" width="100%" />
 
 </div>
 
@@ -56,10 +56,10 @@ A Spotlight-style panel over any app. Fuzzy full-text search, ↑↓, ↩. Templ
 Reprise remembers the values you used last time, shows a live preview with a token count, and never mistakes code like `style={{ color: 'red' }}` for a variable.
 
 ### One action: Copy
-Select a prompt and its blanks are right there to fill. Below them is exactly what will be copied, with includes expanded and blanks filled. **Copy Prompt** (⌘↩) puts it on the clipboard. That's the only way out, in every design. Editing is a separate mode (⌘E), so running a prompt never risks changing it.
+The page is the biggest thing on screen: you write there, with blanks highlighted in the text, and the token count and save state on the line under the title. Beside it, the inspector lists the prompt's **blanks**. Fill them in and press **Copy Prompt** (⌘↩) to put the prompt on the clipboard with the blanks filled and includes expanded. That's the only way to get a prompt out. Includes, files, agent commands and history stay folded below the blanks until you open them.
 
-### Spaces → Projects → Prompts, all named and all colored
-Organise by area (Client work, Research, Open source…) and by project. Every space, project and prompt has a **required name** and its own color. New ones get a random shade drawn from an effectively infinite **OKLCH** pool, so every hue has the same perceived brightness and they all look good together. In the editor, click the color key for another random shade or for "shades near this one". Drag prompts between projects.
+### Spaces → Projects → Prompts, all yours
+Two levels you define: **spaces** for broad areas (Engineering, Research, a client) and **projects** inside them (Daily Agent Work, Deep Dives). You manage both in the sidebar. **+** next to Spaces adds a space, and hovering a space shows **+ New Project**. Double-click any name to rename it in place. Right-click to recolor, move a project to another space, or delete it. Deleting never deletes prompts: they move to another project first. The place line under each prompt's title (ENGINEERING / DAILY AGENT WORK ⌄) is a menu with every project, plus New Project and New Space. Every space, project and prompt has a **required name** and its own color. New ones get a random shade drawn from an effectively infinite **OKLCH** pool, so every hue has the same perceived brightness and they all look good together. In the editor, click the color key for another random shade or for "shades near this one". Drag prompts between projects.
 
 ### Agent-native, not agent-adjacent
 - **MCP server:** `claude mcp add reprise -- reprise mcp`. Agents can `search_prompts`, render with `get_prompt`, and **`save_prompt`** ("save that as a Reprise template"). Pinned prompts appear as native `/mcp__reprise__…` commands with their variables as arguments.
@@ -73,36 +73,44 @@ Paste a screenshot (⌘V) or drop files onto a prompt and they're copied into th
 ### An editor built for long prompts
 AppKit **TextKit 2** with viewport-based layout, so a 4 MB prompt scrolls like a 4 KB one. Markdown, XML-style prompt tags (`<task>`, `<context>`), code fences, links and template placeholders are highlighted **incrementally**: only the paragraphs you touch are re-styled. Smart quotes and autocorrect are off by default, because prompts are code. Autosave, version history (restore any of the last 50 versions), word and token counts, and find & replace.
 
-### Three designs, three different apps
-Reprise ships as three builds with three different layouts, not three color schemes. Install all three side by side, keep the one that fits how you work, and switch any time in **Settings → Appearance**. They share one library.
+### One layout, four builds to compare
+Reprise has one structure: library on the left, the page in the middle, blanks on the right. Three things vary, and every build can change all of them in **Settings → Appearance**:
 
-| | **Console** (`Reprise.app`) | **Board** (`Reprise Board.app`) | **Studio** (`Reprise Studio.app`) |
-|---|---|---|---|
-| | <img src="docs/assets/icon.png" width="96" /> | <img src="docs/assets/icon-board.png" width="96" /> | <img src="docs/assets/icon-studio.png" width="96" /> |
-| Built around | Searching | Seeing everything at once | Writing |
-| Layout | One search field, results, a run panel, an action bar. No sidebar. | Spaces as tabs, projects as columns, prompts as tiles. Drag tiles between projects. | Prompts open in tabs, the library is a ⌘P palette, a run inspector sits beside the page. |
-| Running a prompt | Right panel, always visible | A focused card over the board | The Run tab of the inspector |
-| Feels like | Raycast | Linear's board | Zed or iA Writer |
+- **Finish.** *Solid* uses opaque warm surfaces with hairline dividers. *Glass* floats each region as a Liquid Glass pane over your blurred desktop, with gradient fills, lit edges and capsule controls.
+- **Accent.** *Coral* or *Wine* (a burgundy).
+- **Library.** *Two columns* means a sidebar of spaces and projects, then a list of prompts, as in Notes. *One column* is a single outline where projects unfold to show their prompts, which leaves more room for the page.
 
-**Console**: type, ↑↓, ⌘↩.
-<img src="docs/assets/console.png" alt="Console" width="100%" />
+| | `Reprise.app` | `Reprise Wine.app` | `Reprise Glass.app` | `Reprise Glass Wine.app` |
+|---|---|---|---|---|
+| | <img src="docs/assets/icon.png" width="80" /> | <img src="docs/assets/icon-wine.png" width="80" /> | <img src="docs/assets/icon-glass.png" width="80" /> | <img src="docs/assets/icon-glasswine.png" width="80" /> |
+| Finish | Solid | Solid | Glass | Glass |
+| Accent | Coral | Wine | Coral | Wine |
+| Library | Two columns | One column | Two columns | One column |
 
-**Board**: every project in view; click a tile to run it.
-<img src="docs/assets/board.png" alt="Board" width="100%" />
-<img src="docs/assets/board-run.png" alt="Board, run card" width="100%" />
+**Solid · Coral · two columns**
+<img src="docs/assets/coral.png" alt="Solid, Coral" width="100%" />
 
-**Studio**: write in tabs and test the template beside the page.
-<img src="docs/assets/studio.png" alt="Studio" width="100%" />
-<img src="docs/assets/studio-palette.png" alt="Studio, ⌘P palette" width="100%" />
+**Solid · Wine · one column**
+<img src="docs/assets/wine.png" alt="Solid, Wine, outline library" width="100%" />
+
+**Glass · Coral**
+<img src="docs/assets/glass.png" alt="Glass, Coral" width="100%" />
+
+**Glass · Wine · one column**
+<img src="docs/assets/glasswine.png" alt="Glass, Wine" width="100%" />
 
 ### Dark by default, light when you want it
-Every design starts dark. **Settings → Appearance → Theme** switches between Dark, Light and Match System, and ⇧⌘L cycles them.
+Every build starts dark. **Settings → Appearance → Theme** switches between Dark, Light and Match System, and ⇧⌘L cycles through them.
 
-| Console · Light | Board · Light | Studio · Light |
+| Solid · Coral · Light | Solid · Wine · Light | Glass · Wine · Light |
 |---|---|---|
-| <img src="docs/assets/console-light.png" /> | <img src="docs/assets/board-light.png" /> | <img src="docs/assets/studio-light.png" /> |
+| <img src="docs/assets/coral-light.png" /> | <img src="docs/assets/wine-light.png" /> | <img src="docs/assets/glasswine-light.png" /> |
 
-<img src="docs/assets/settings.png" alt="Settings: theme and design" width="50%" />
+| Quick Panel, Solid | Quick Panel, Glass |
+|---|---|
+| <img src="docs/assets/quick-panel.png" /> | <img src="docs/assets/quick-panel-glass.png" /> |
+
+<img src="docs/assets/settings.png" alt="Settings: theme, finish, accent, library layout" width="50%" />
 
 ## Fast, on purpose
 
@@ -118,14 +126,14 @@ Every design starts dark. **Settings → Appearance → Theme** switches between
 | List 5,000 rows | 104 ms |
 | Bulk-insert 50,000 prompts | 2.6 s |
 
-How: lists never load prompt bodies, only a 280-char snippet. SQLite runs with WAL, mmap, cached prepared statements and an **FTS5** index kept in sync by triggers. The editor is TextKit 2. Saves are debounced and run off the main thread. Thumbnails are downsampled with ImageIO. The whole app is **5.3 MB** (a 1.4 MB download) with zero dependencies.
+How: lists never load prompt bodies, only a 280-char snippet. SQLite runs with WAL, mmap, cached prepared statements and an **FTS5** index kept in sync by triggers. The editor is TextKit 2. Saves are debounced and run off the main thread. Thumbnails are downsampled with ImageIO. The whole app is **5.0 MB** (a 1.3 MB download) with zero dependencies.
 
 ### Why not Rust? Why not Electron?
 Notes doesn't lag because Swift is slow. It lags because of *how it lays out and stores text*. The fix is architectural: viewport-based text layout, an indexed store, and never touching full bodies in lists. Rust would add an FFI boundary and buy nothing over SQLite's C core. Electron would cost 150 MB of RAM. And real macOS 26 glass, menus and text input only exist natively. Reprise is Swift 6, SwiftUI, AppKit and SQLite, nothing else.
 
 ## Install
 
-**Download:** grab a zip from [Releases](https://github.com/thekeenest/reprise/releases): `Reprise.zip` (Console), `Reprise-Board.zip` or `Reprise-Studio.zip`. Unzip and move it to Applications. Each design is its own app with its own settings, and they all share one library. If you run two at once, give one a different Quick Panel shortcut in Settings. The builds are ad-hoc signed, not notarized yet, so on first launch run:
+**Download:** grab a zip from [Releases](https://github.com/thekeenest/reprise/releases): `Reprise.zip`, `Reprise-Wine.zip`, `Reprise-Glass.zip` or `Reprise-Glass-Wine.zip`. Unzip and move it to Applications. Each build is its own app with its own settings, and they all share one library. If you run two at once, give one a different Quick Panel shortcut in Settings. The builds are ad-hoc signed, not notarized yet, so on first launch run:
 ```bash
 xattr -dr com.apple.quarantine /Applications/Reprise*.app
 ```
@@ -134,8 +142,8 @@ xattr -dr com.apple.quarantine /Applications/Reprise*.app
 ```bash
 git clone https://github.com/thekeenest/reprise && cd reprise
 scripts/build-app.sh --install     # builds, installs to /Applications, links the CLI to ~/.local/bin/reprise
-scripts/build-app.sh --all         # builds all three designs into dist/ to compare them
-scripts/build-app.sh --world Board # just one (Console, Board or Studio)
+scripts/build-app.sh --all                   # builds all four variants into dist/ to compare them
+scripts/build-app.sh --variant "Glass Wine"  # just one: Coral, Wine, Glass or "Glass Wine"
 ```
 
 **Wire up your agents:**
@@ -151,10 +159,9 @@ codex mcp add reprise -- reprise mcp
 | ⌥⌘P | Quick Panel from anywhere (configurable) |
 | ⌘N / ⇧⌘N / ⌥⌘N | New prompt / project / space |
 | ⌘↩ | Copy the prompt with its blanks filled |
-| ⌘E | Edit / done editing (Console, Board) |
-| ⌘K | Search (Console) |
-| ⌘P | Open a prompt (Studio) |
-| ⌥⌘0 | Show or hide the inspector (Studio) |
+| ⌘K | Search |
+| ⌃⌘S | Show or hide the sidebar |
+| ⌥⌘0 | Show or hide the inspector |
 | ⇧⌘C | Copy the template source, blanks unfilled |
 | ⇧⌘P | Pin |
 | ⇧⌘T | Toggle agent command |
@@ -171,11 +178,11 @@ Everything lives in `~/Library/Application Support/Reprise/` as one SQLite file 
 
 ```
 Sources/RepriseCore     the engine: SQLite store, FTS5, template language, Harvest, agent sync, Markdown I/O
-Sources/RepriseApp      SwiftUI + AppKit app: TextKit 2 editor, Quick Panel, three designs
+Sources/RepriseApp      SwiftUI + AppKit app: TextKit 2 editor, Quick Panel, Solid and Glass finishes
 Sources/reprise         CLI + MCP server (stdio JSON-RPC)
 Sources/reprise-bench   correctness checks + performance benchmark
 Tests/                  XCTest suite (run in Xcode / CI)
-DESIGN.md               the three design systems, token by token
+DESIGN.md               the design system: tokens, finishes, accents, rules
 docs/                   research, launch plan, assets
 ```
 

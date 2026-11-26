@@ -13,9 +13,10 @@ struct RepriseApp: App {
             ContentView()
                 .environment(model)
                 .preferredColorScheme(look.scheme)
-                .frame(minWidth: 980, minHeight: 580)
+                .frame(minWidth: 1060, minHeight: 600)
         }
         .windowStyle(.hiddenTitleBar)
+        .windowBackgroundDragBehavior(.enabled)
         .defaultSize(width: 1440, height: 880)
         .commands { RepriseCommands(model: model) }
 
@@ -70,16 +71,10 @@ struct RepriseCommands: Commands {
             Button("Copy Prompt") {
                 if model.current != nil { model.copyCurrent() } else if let id = model.selectedID { model.use(id) }
             }.keyboardShortcut(.return, modifiers: .command)
-            Button(model.editing ? "Done Editing" : "Edit Prompt") {
-                guard model.current != nil else { return }
-                model.flushSave()
-                if World.current == .studio { return }
-                model.editing.toggle()
-                if World.current == .board, !model.editing { model.showRun = true }
-            }.keyboardShortcut("e")
-            Button(World.current == .studio ? "Open Prompt…" : "Search") {
-                if World.current == .studio { model.showPalette = true } else { model.focusSearchToken += 1 }
-            }.keyboardShortcut(World.current == .studio ? "p" : "k")
+            Button("Search") {
+                if !model.showSidebar { model.showSidebar = true }
+                model.focusSearchToken += 1
+            }.keyboardShortcut("k")
             Divider()
             Button("Copy Template Source") { if let id = model.selectedID { model.copyRaw(id) } }.keyboardShortcut("c", modifiers: [.command, .shift])
             Button("Pin / Unpin") { if let id = model.selectedID { model.togglePin(id) } }.keyboardShortcut("p", modifiers: [.command, .shift])
@@ -97,9 +92,16 @@ struct RepriseCommands: Commands {
             Picker("Theme", selection: $look) {
                 ForEach(Look.allCases) { Text($0.name).tag($0) }
             }
-            Picker("Design", selection: Binding(get: { World.current }, set: { World.set($0) })) {
-                ForEach(World.allCases) { Text($0.rawValue).tag($0) }
+            Picker("Finish", selection: Binding(get: { Variant.finish }, set: { Variant.set(finish: $0) })) {
+                ForEach(Finish.allCases) { Text($0.rawValue).tag($0) }
             }
+            Picker("Accent", selection: Binding(get: { Variant.accent }, set: { Variant.set(accent: $0) })) {
+                ForEach(Accent.allCases) { Text($0.rawValue).tag($0) }
+            }
+            Picker("Library", selection: Binding(get: { Variant.library }, set: { Variant.set(library: $0) })) {
+                ForEach(LibraryLayout.allCases) { Text($0.name).tag($0) }
+            }
+            Button("Show or Hide Sidebar") { model.showSidebar.toggle() }.keyboardShortcut("s", modifiers: [.command, .control])
             Button("Next Theme") {
                 let all = Look.allCases
                 look = all[(all.firstIndex(of: look)! + 1) % all.count]
@@ -136,19 +138,15 @@ struct RepriseCommands: Commands {
 struct ContentView: View {
     @Environment(AppModel.self) private var model
     @LookSetting private var look
-    @AppStorage("world") private var worldRaw = ""
+    @AppStorage("finish") private var finishRaw = ""
+    @AppStorage("accent") private var accentRaw = ""
+    @AppStorage("libraryLayout") private var libraryRaw = ""
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         @Bindable var model = model
-        let _ = worldRaw
-        Group {
-            switch World.current {
-            case .console: ConsoleView()
-            case .board: BoardView()
-            case .studio: StudioView()
-            }
-        }
+        let signature = finishRaw + accentRaw + libraryRaw
+        MainView()
         .overlay(alignment: .bottom) {
             if let t = model.toast {
                 ToastView(toast: t)
@@ -160,7 +158,26 @@ struct ContentView: View {
         .sheet(item: $model.historyTarget) { HistorySheet(prompt: $0) }
         .sheet(item: $model.namingRequest) { NamingSheet(request: $0) }
         .sheet(isPresented: $model.showHarvest) { HarvestView() }
-        .id(worldRaw)
+        .alert(item: $model.confirmDelete) { d in
+            switch d {
+            case .space(let sp):
+                let ids = Set(model.projects.filter { $0.spaceID == sp.id }.map(\.id))
+                let n = model.promptCount(in: ids)
+                let to = model.fallbackProject(excluding: ids, preferSpace: nil)?.name ?? "another project"
+                return Alert(title: Text("Delete the space “\(sp.name)”?"),
+                             message: Text("Its \(ids.count) project\(ids.count == 1 ? "" : "s") will be removed. \(n == 0 ? "It has no prompts." : "Its \(n) prompt\(n == 1 ? "" : "s") move to \(to); nothing is deleted.")"),
+                             primaryButton: .destructive(Text("Delete Space")) { model.deleteSpace(sp) },
+                             secondaryButton: .cancel())
+            case .project(let pr):
+                let n = model.promptCount(in: [pr.id])
+                let to = model.fallbackProject(excluding: [pr.id], preferSpace: pr.spaceID)?.name ?? "another project"
+                return Alert(title: Text("Delete the project “\(pr.name)”?"),
+                             message: Text(n == 0 ? "It has no prompts." : "Its \(n) prompt\(n == 1 ? "" : "s") move to \(to); nothing is deleted."),
+                             primaryButton: .destructive(Text("Delete Project")) { model.deleteProject(pr) },
+                             secondaryButton: .cancel())
+            }
+        }
+        .id(signature)
         .tint(Folio.rubric)
         .onChange(of: model.openSettingsToken) { openSettings() }
     }
@@ -181,8 +198,8 @@ struct ToastView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(Folio.paper, in: RoundedRectangle(cornerRadius: Folio.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Folio.radius, style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
+        .background(Folio.raised, in: Capsule(style: .continuous))
+        .overlay(Capsule(style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
         .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
     }
 }

@@ -28,7 +28,7 @@ Shared setup: macOS 26, wallpaper with strong color (the glass needs something t
 | D2 | **Notes vs Reprise** | 15 s | Split screen: the same 4 MB prompt. Left: Notes with a beachball while scrolling. Right: Reprise, buttery scroll + live highlighting. Caption: *"Apple Notes: 4 MB prompt. Reprise: 4 MB prompt."* | The "why" tweet; this is the one that travels |
 | D3 | **Harvest** | 18 s | Click 🌱 → list populates → zoom on "×32 · 49,507 chars" → check 5 → *Save* → they appear as templates. Caption: *"It read my Claude Code + Codex history. I'd pasted one prompt 32 times."* | Meme starter |
 | D4 | **Agents use it** | 25 s | In Claude Code: "save the prompt you just ran as a Reprise template called 'Migrate to Swift 6'". Cut to Reprise: it appears live with `{{module}}` placeholders. Then type `/mcp__reprise__migrate-to-swift-6 Networking`. | MCP / agent-native crowd |
-| D5 | **Designs** | 12 s | The same library in Console → Board → Studio (three apps, ⌘-Tab between them), ending on Board with a tile dragged between projects. Caption: "Same library. Three layouts. Pick one." | Design Twitter, people who care how tools feel |
+| D5 | **Finishes** | 12 s | The same prompt in Solid, then Settings → Finish → Glass: panes float off the desktop. Then Accent → Wine, then ⇧⌘L to Light. Caption: "Solid or glass. Coral or wine. Dark by default." |
 | D6 | **Includes** | 15 s | Edit "Staff Engineer" preamble once → show three templates that `{{> Staff Engineer}}` update in preview. Caption: *"Write your role prompt once. Every template inherits it."* | Prompt-engineering crowd |
 | D7 | **CLI** | 12 s | Terminal only: `reprise cast "review" --var focus=security -c` → `✓ copied (1,204 tokens)` → paste. | Terminal purists, HN |
 
@@ -39,7 +39,7 @@ Record D1, D2 and D3 first; they carry the launch.
 ## 2. Timeline
 
 ### T-10 → T-3: build in public (one post a day, no link)
-- T-10: the Console screenshot. *"Building a prompt launcher for people who live in Claude Code. Search, fill the blanks, ⌘↩. Native, dark, open source. Shipping soon."*
+- T-10: the Glass · Wine screenshot. *"Building a prompt studio for people who live in Claude Code. The page gets the room, blanks fill in beside it, ⌘↩ copies. Native, dark, open source. Shipping soon."*
 - T-8: D2 (Notes vs Reprise) teaser, no name: *"Why does Apple Notes do this with a 100k-char prompt?"*
 - T-6: the template syntax as an image. Ask: *"What would you add?"* (engagement + feedback)
 - T-4: the icon reveal + the name story (reprise = a theme that returns, with variations).
@@ -114,9 +114,8 @@ What's your number?
 **6/**
 Spaces → projects → prompts, each with a name and its own color from an endless OKLCH shade pool.
 
-It ships as three apps with three layouts:
-Console (a launcher), Board (projects as columns), Studio (tabs + a run inspector).
-Same library. Keep the one that fits.
+Two finishes: Solid, or Liquid Glass panes floating over your desktop.
+Two accents: coral or wine. Dark by default.
 [D5]
 
 **7/**
@@ -131,7 +130,7 @@ If it saves you one re-paste today, a ⭐ helps a lot.
 2. *"The best prompt engineers I know don't write better prompts every time. They write one great prompt and reuse it 200 times."* [D6]
 3. *"Apple Notes is not a prompt manager."* [D2, no other text]
 4. *"Claude Code can now save its own best prompts into my library. `save_prompt` over MCP is weirdly addictive."* [D4]
-5. *"I couldn't pick one layout, so Reprise ships three apps: a launcher, a board, an editor. Which one are you?"* [three screenshots: console / board / studio]
+5. *"Solid or Liquid Glass? I built both and can't decide. Which one would you keep?"* [two screenshots: coral / glasswine]
 6. *"Things I refused to put in a prompt app: an account, a subscription, telemetry, Electron."*
 7. *"Your role preamble is a dependency. Treat it like one: `{{> Staff Engineer}}`."*
 8. *"⌥⌘P · bug · ↩. That's the whole UX."* [D1 cropped to 8 s]
@@ -166,7 +165,7 @@ Track: stars (star-history), README → release downloads, `claude mcp add repri
 - [ ] Notarized build (Developer ID) so the download "just works". This is the #1 friction risk.
 - [ ] `brew install --cask reprise` tap
 - [ ] README GIF of D1 at the top (≤ 6 MB)
-- [ ] Social preview image (1280×640): Console screenshot + wordmark
+- [ ] Social preview image (1280×640): Glass · Wine screenshot + wordmark
 - [ ] Pinned tweet = launch thread
 - [ ] GitHub topics: `prompt-engineering`, `claude-code`, `codex`, `mcp`, `macos`, `swiftui`, `macos-app`
 - [ ] Issue templates + "Show us your setup" discussion

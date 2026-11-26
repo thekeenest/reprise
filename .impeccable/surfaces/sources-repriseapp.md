@@ -7,18 +7,18 @@ related_targets: []
 
 # Main window (Operate)
 
-Scope: Reprise's main window in three structures (Console, Board, Studio), plus the Quick Panel, sheets and Settings that inherit it. Visitor mode: Operate. Users write and refine long agent prompts here; retrieval lives in the Quick Panel.
+Scope: Reprise's main window (sidebar or outline, list, page, inspector) in Solid and Glass finishes, plus the Quick Panel, sheets and Settings that inherit it. Visitor mode: Operate. Users write and refine long agent prompts here; retrieval lives in the Quick Panel.
 
 ## Direction contract
 
-THESIS: A prompt library must not look like a notes app, and the notes-app tell is structural (sidebar, list, editor), not chromatic. Reprise therefore ships three designs with three different structures, each its own build, all on one library and one rule set: one primary action (Copy Prompt, ⌘↩, with the exact payload shown above it), New Prompt always in the top bar, dark by default.
+THESIS: The user's verdicts across three rounds produced this synthesis. The page gets the most room (Studio's New York page with colorful blanks, token count and save state). The library is a Notes-style list with a properly organised, user-owned Space → Project hierarchy. A narrow inspector puts the blanks and a content-hugging Copy first and folds the rest away. Everything is rounded, and dark is the default.
 
-OWN-WORLD: Console is cool graphite (#111113) with one coral signal (#FF7452), SF Pro, 8 pt radius. Board is near-black monochrome (#0E0F10) whose primary button is ink (white), with mint (#5EE0A8) only on blanks and templates, 10 pt tiles. Studio is warm iron (#161514) with bone ink and vermilion (#EF6A52), New York titles and small caps, the Edition's heir. Each has a Light theme; Dark is the default. No tinted glass, no gradients.
+OWN-WORLD: Warm iron (#161514) with bone ink (#ECE9E1) and New York type. Accents are Coral (#EF6A52) or Wine (#D0566B text on a #8E2236 burgundy fill). Finishes are Solid (flat regions, hairlines) or Glass (floating gradient panes with lit edges over the blurred desktop, capsule controls), after the user's visionOS-style reference.
 
-STORY: Console: type, arrow, ⌘↩. Board: see every project at once, click a tile, fill, copy, drag tiles between projects. Studio: open prompts in tabs, write, and test the template in the inspector beside the page.
+STORY: Pick a project in the sidebar (or unfold it in the outline), pick a prompt, write on the page, fill the blanks beside it, then Copy. Make, rename, recolor or move spaces and projects right where they are listed.
 
-FIRST VIEWPORT: Console opens on a large search field, a results column with Pinned on top, and the selected prompt's blanks, payload and Copy button. Board opens on space tabs and project columns of tiles. Studio opens on the last tabs, the page, and the Run inspector.
+FIRST VIEWPORT: Sidebar with search, Library and Spaces; the prompt list; the page with title, detent rule, place menu and stats; and the inspector with Blanks and Copy Prompt.
 
-FORM: Three structural designs (user request, 2026-11-25: "totally different designs, not just different color palettes"). They replace the earlier palette-only variants of the Annotated Edition (challenger rw-centre-rail-reference-setting; seed:39be0b7ef1750db5), whose type and vermilion survive in Studio. Signature moves: Console's action bar, Board's run card, Studio's tabs plus Run inspector.
+FORM: Synthesis build, 2026-11-26. Its sources: the Studio page (0.3), the Edition list and margin (0.2), and the user's Liquid Glass reference. Variants ship as four builds: Solid Coral, Solid Wine, Glass Coral and Glass Wine, with the library layout varied across them.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

@@ -139,32 +139,38 @@ struct PageHeader: View {
     }
 }
 
-/// "ENGINEERING · DAILY AGENT WORK", and a menu that moves the prompt.
+/// "ENGINEERING / DAILY AGENT WORK ⌄": where the prompt lives. A menu of every space and
+/// project, plus New Project and New Space, so the set is never fixed.
 struct ProjectLine: View {
     @Environment(AppModel.self) private var model
     let prompt: Prompt
+    @State private var hovering = false
 
     var body: some View {
         let project = model.project(prompt.projectID)
         let space = project.flatMap { model.space($0.spaceID) }
         Menu {
-            ForEach(model.spaces) { s in
-                Section(s.name) {
-                    ForEach(model.projects.filter { $0.spaceID == s.id }) { p in
-                        Button { model.move(prompt.id, to: p.id) } label: {
-                            if p.id == prompt.projectID { Label(p.name, systemImage: "checkmark") } else { Text(p.name) }
-                        }
-                    }
-                }
-            }
+            ProjectChoices(current: prompt.projectID) { model.move(prompt.id, to: $0) }
         } label: {
-            Caps([space?.name, project?.name].compactMap { $0 }.joined(separator: " / "), color: Folio.ink, size: 10.5)
+            HStack(spacing: 4) {
+                Caps([space?.name, project?.name].compactMap { $0 }.joined(separator: " / "), color: Folio.ink, size: 10.5)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7.5, weight: .bold))
+                    .foregroundStyle(Folio.slate)
+                    .opacity(hovering ? 1 : 0.55)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Folio.ink.opacity(hovering ? 0.08 : 0)))
+            .padding(.horizontal, -6)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Move to another project")
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
+        .help("Move to another project, or make a new project or space")
     }
 }
 
@@ -192,44 +198,7 @@ struct StatsLine: View {
     }
 }
 
-// MARK: Toolbar
-
 // MARK: Details
-
-/// Everything about a prompt except its text and its blanks: includes, files, agent commands, record.
-struct DetailsView: View {
-    @Environment(AppModel.self) private var model
-    let prompt: Prompt
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 26) {
-            if !model.includes.isEmpty { IncludesSection(names: model.includes) }
-            FilesSection(attachments: model.attachments)
-            PublishSection(prompt: prompt)
-            RecordSection(prompt: prompt)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-struct MarginHeading<Trailing: View>: View {
-    var title: String
-    @ViewBuilder var trailing: Trailing
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Caps(title, color: Folio.ink, size: 11)
-                Spacer()
-                trailing
-            }
-            Hairline()
-        }
-    }
-}
-
-extension MarginHeading where Trailing == EmptyView {
-    init(title: String) { self.title = title; self.trailing = EmptyView() }
-}
 
 struct PressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -243,7 +212,6 @@ struct IncludesSection: View {
     let names: [String]
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            MarginHeading(title: "Includes")
             ForEach(names, id: \.self) { n in
                 Button { model.open(named: n) } label: {
                     HStack(spacing: 6) {
@@ -270,24 +238,8 @@ struct FilesSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            MarginHeading(title: "Files & Links") {
-                Menu {
-                    Button("Add Files…") { importing = true }
-                    Button("Add Link…") { showLink = true }
-                } label: {
-                    Image(systemName: "plus").font(.system(size: 11, weight: .medium)).foregroundStyle(Folio.slate)
-                }
-                .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-                .help("Attach files or a link")
-                .popover(isPresented: $showLink) {
-                    HStack {
-                        TextField("https://…", text: $link).frame(width: 260).onSubmit(addLink)
-                        Button("Add", action: addLink).buttonStyle(.borderedProminent)
-                    }.padding(12)
-                }
-            }
             if attachments.isEmpty {
-                Text("Paste or drop images and files onto the page. Their paths are added when you use the prompt.")
+                Text("Paste or drop images and files onto the page. Their paths are added when you copy the prompt.")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Folio.slate)
                     .fixedSize(horizontal: false, vertical: true)
@@ -314,6 +266,19 @@ struct FilesSection: View {
                 }
             }
         }
+        HStack(spacing: 6) {
+            Button("Add Files…") { importing = true }
+            Button("Add Link…") { showLink = true }
+                .popover(isPresented: $showLink) {
+                    HStack {
+                        TextField("https://…", text: $link).frame(width: 260).onSubmit(addLink)
+                        Button("Add", action: addLink).buttonStyle(FilledButtonStyle(height: 26))
+                    }.padding(12)
+                }
+        }
+        .buttonStyle(GhostButtonStyle(height: 24))
+        .font(.system(size: 11.5))
+        .padding(.top, 4)
         .quickLookPreview($preview)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { r in
             if case .success(let urls) = r {
@@ -373,7 +338,6 @@ struct PublishSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            MarginHeading(title: "Agents")
             Toggle(isOn: Binding(get: { prompt.exportCommand }, set: { _ in model.toggleAgentCommand(prompt.id) })) {
                 Text("Publish as a slash command").font(.system(size: 12))
             }
@@ -415,7 +379,6 @@ struct RecordSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            MarginHeading(title: "Record")
             line("Written", prompt.createdAt.formatted(date: .abbreviated, time: .omitted))
             line("Edited", prompt.updatedAt.formatted(date: .abbreviated, time: .shortened))
             line("Played", prompt.useCount == 0 ? "never" : "\(prompt.useCount)×" + (prompt.lastUsedAt.map { ", last \($0.relative) ago" } ?? ""))

@@ -1,31 +1,41 @@
 #!/usr/bin/env bash
 # Builds Reprise.app (universal-ready, ad-hoc signed) into ./dist
-#   scripts/build-app.sh                      release build of the default design (Console)
-#   scripts/build-app.sh --world Board        a build whose design is Board (or Studio)
-#   scripts/build-app.sh --all                all three designs, side by side in ./dist
-#   scripts/build-app.sh --install            also copies to /Applications and links the CLI
+#   scripts/build-app.sh                          the default build (Solid finish, Coral accent)
+#   scripts/build-app.sh --variant "Glass Wine"   one variant: Coral, Wine, Glass or "Glass Wine"
+#   scripts/build-app.sh --all                    all four, side by side in ./dist
+#   scripts/build-app.sh --install                also copies to /Applications and links the CLI
+# Every build can switch finish, accent and library layout live in Settings → Appearance;
+# the variant only sets the defaults, so the four builds can be compared side by side.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-WORLD="Console"; INSTALL=0
+VARIANT="Coral"; INSTALL=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --world) WORLD="$2"; shift 2 ;;
+    --variant) VARIANT="$2"; shift 2 ;;
     --install) INSTALL=1; shift ;;
     --all)
-      for w in Console Board Studio; do "$0" --world "$w"; done
+      for v in Coral Wine Glass "Glass Wine"; do "$0" --variant "$v"; done
       exit 0 ;;
     *) echo "unknown option $1"; exit 1 ;;
   esac
 done
 
-VERSION="0.3.0"
+VERSION="0.4.0"
 CONFIG="release"
-if [[ "$WORLD" == "Console" ]]; then
-  APP="dist/Reprise.app"; BUNDLE_ID="dev.thekeenest.reprise"; NAME="Reprise"; ICON="Resources/AppIcon.icns"
+case "$VARIANT" in
+  Coral)        FINISH="Solid"; ACCENT="Coral"; LIBRARY="Columns" ;;
+  Wine)         FINISH="Solid"; ACCENT="Wine";  LIBRARY="Outline" ;;
+  Glass)        FINISH="Glass"; ACCENT="Coral"; LIBRARY="Columns" ;;
+  "Glass Wine") FINISH="Glass"; ACCENT="Wine";  LIBRARY="Outline" ;;
+  *) echo "unknown variant $VARIANT"; exit 1 ;;
+esac
+SLUG="$(echo "$VARIANT" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+if [[ "$VARIANT" == "Coral" ]]; then
+  APP="dist/Reprise.app"; BUNDLE_ID="dev.thekeenest.reprise"; NAME="Reprise"; ICON="Resources/AppIcon.icns"; PNG="docs/assets/icon.png"
 else
-  LOWER="$(echo "$WORLD" | tr '[:upper:]' '[:lower:]')"
-  APP="dist/Reprise $WORLD.app"; BUNDLE_ID="dev.thekeenest.reprise.$LOWER"; NAME="Reprise $WORLD"; ICON="Resources/AppIcon-$WORLD.icns"
+  APP="dist/Reprise $VARIANT.app"; BUNDLE_ID="dev.thekeenest.reprise.$SLUG"; NAME="Reprise $VARIANT"
+  ICON="Resources/AppIcon-${VARIANT// /}.icns"; PNG="docs/assets/icon-$SLUG.png"
 fi
 
 echo "▸ Building ($CONFIG)…"
@@ -40,17 +50,16 @@ cp "$BIN/RepriseApp" "$APP/Contents/MacOS/Reprise"
 cp "$BIN/reprise" "$APP/Contents/Helpers/reprise"
 
 if [ ! -f "$ICON" ]; then
-  echo "▸ Rendering $WORLD icon"
+  echo "▸ Rendering $VARIANT icon"
   ICONTMP="$(mktemp -d)"
-  swift scripts/make-icon.swift "$ICONTMP" "$WORLD" >/dev/null
+  swift scripts/make-icon.swift "$ICONTMP" "$VARIANT" >/dev/null
   SET="$ICONTMP/AppIcon.iconset"; mkdir -p "$SET"
   for s in 16 32 128 256 512; do
     sips -z $s $s "$ICONTMP/icon-1024.png" --out "$SET/icon_${s}x${s}.png" >/dev/null
     d=$((s*2)); sips -z $d $d "$ICONTMP/icon-1024.png" --out "$SET/icon_${s}x${s}@2x.png" >/dev/null
   done
   iconutil -c icns "$SET" -o "$ICON"
-  if [[ "$WORLD" == "Console" ]]; then cp "$ICONTMP/icon-1024.png" docs/assets/icon.png
-  else cp "$ICONTMP/icon-1024.png" "docs/assets/icon-$LOWER.png"; fi
+  cp "$ICONTMP/icon-1024.png" "$PNG"
 fi
 cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
 
@@ -62,7 +71,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>$NAME</string>
   <key>CFBundleDisplayName</key><string>$NAME</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-  <key>RepriseWorld</key><string>$WORLD</string>
+  <key>RepriseFinish</key><string>$FINISH</string>
+  <key>RepriseAccent</key><string>$ACCENT</string>
+  <key>RepriseLibrary</key><string>$LIBRARY</string>
   <key>CFBundleExecutable</key><string>Reprise</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>

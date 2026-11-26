@@ -10,12 +10,12 @@ enum Snapshot {
         ProcessInfo.processInfo.environment["REPRISE_SNAPSHOT"].map { URL(fileURLWithPath: $0, isDirectory: true) }
     }
 
-    /// REPRISE_DEMO=panel|fill|harvest|run|edit|palette|tabs opens that surface on launch (for recording demos).
+    /// REPRISE_DEMO=panel|fill|harvest|new|settings|noinspector|nosidebar|folds|rename opens that surface on launch (for recording demos).
     static func demoIfRequested() {
         if let title = ProcessInfo.processInfo.environment["REPRISE_SELECT"],
            let p = try? AppModel.shared.store.prompt(named: title) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                if World.current == .studio { AppModel.shared.open(p.id) } else { AppModel.shared.selectedID = p.id }
+                AppModel.shared.selectedID = p.id
             }
         }
         guard let demo = ProcessInfo.processInfo.environment["REPRISE_DEMO"] else { return }
@@ -27,16 +27,14 @@ enum Snapshot {
                 QuickPanelController.shared.show()
             case "fill": if let id = model.selectedID { model.use(id) }
             case "harvest": model.showHarvest = true
-            case "run": model.showRun = true
             case "new": model.newPrompt()
             case "settings": model.openSettingsToken += 1
-            case "edit": model.editing = true
-            case "palette": model.showPalette = true
-            case "tabs":
-                for t in ["Staff Engineer", "Hunt a bug", "Ship a feature"] {
-                    if let p = try? model.store.prompt(named: t) { model.open(p.id) }
-                }
-                if let p = try? model.store.prompt(named: ProcessInfo.processInfo.environment["REPRISE_SELECT"] ?? "") { model.selectedID = p.id }
+            case "noinspector": model.showMargin = false
+            case "nosidebar": model.showSidebar = false
+            case "folds":
+                for k in ["fold.files", "fold.agents", "fold.record"] { UserDefaults.standard.set(true, forKey: k) }
+            case "rename":
+                if let pr = model.projects.first { model.renaming = .project(pr.id) }
             default: break
             }
         }

@@ -195,7 +195,7 @@ final class Highlighter {
         mono = .monospacedSystemFont(ofSize: size * 0.84, weight: .regular)
         monoStrong = .monospacedSystemFont(ofSize: size * 0.84, weight: .semibold)
         let para = NSMutableParagraphStyle()
-        para.lineHeightMultiple = font == .mono ? 1.3 : World.current.style.lineHeight
+        para.lineHeightMultiple = font == .mono ? 1.3 : Folio.style.lineHeight
         para.paragraphSpacing = size * 0.45
         base = [.font: bodyFont, .foregroundColor: text, .paragraphStyle: para]
     }

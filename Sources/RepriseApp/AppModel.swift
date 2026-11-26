@@ -42,49 +42,55 @@ final class AppModel {
         didSet { if let id = current?.id { Prefs.rememberValues(fillValues, for: id) } }
     }
 
-    // MARK: Design state (which surfaces are open)
+    // MARK: Layout state
 
-    /// Console and Board: the current prompt is open for editing rather than for running.
-    var editing = false
-    /// Board: the run card over the board.
-    var showRun = false
-    /// Studio: the library palette.
-    var showPalette = false
-    /// Console: bumped by ⌘K to focus the search field.
+    var showSidebar = UserDefaults.standard.object(forKey: "showSidebar") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showSidebar, forKey: "showSidebar") }
+    }
+    /// Bumped by ⌘K to focus the search field.
     var focusSearchToken = 0
     /// Bumped to open the Settings window (demo recording).
     var openSettingsToken = 0
-    /// Studio: prompts open as tabs, in order. Persisted across launches.
-    var openTabs: [ID] = (UserDefaults.standard.array(forKey: "openTabs") as? [NSNumber])?.map { $0.int64Value } ?? [] {
-        didSet { UserDefaults.standard.set(openTabs.map { NSNumber(value: $0) }, forKey: "openTabs") }
+
+    enum Renaming: Equatable { case space(ID), project(ID) }
+    /// The sidebar row being renamed in place.
+    var renaming: Renaming?
+
+    enum Deletion: Identifiable {
+        case space(Space), project(Project)
+        var id: String { switch self { case .space(let s): "s\(s.id)"; case .project(let p): "p\(p.id)" } }
+    }
+    var confirmDelete: Deletion?
+
+    /// Spaces folded shut in the sidebar.
+    var foldedSpaces: Set<ID> = Set((UserDefaults.standard.array(forKey: "foldedSpaces") as? [NSNumber])?.map(\.int64Value) ?? []) {
+        didSet { UserDefaults.standard.set(foldedSpaces.map { NSNumber(value: $0) }, forKey: "foldedSpaces") }
+    }
+    /// Outline layout: projects unfolded to show their prompts.
+    var openProjects: Set<ID> = Set((UserDefaults.standard.array(forKey: "openProjects") as? [NSNumber])?.map(\.int64Value) ?? []) {
+        didSet { UserDefaults.standard.set(openProjects.map { NSNumber(value: $0) }, forKey: "openProjects") }
     }
 
-    /// The text that Copy will put on the clipboard: blanks filled, includes expanded.
-    var preview: String {
-        guard let p = current else { return "" }
-        var copy = p
-        if let (id, text) = pendingBody, id == p.id { copy.body = text }
-        return store.payload(copy, values: fillValues, includeAttachments: false, clipboard: { "" })
+    func toggleFold(space id: ID) {
+        withAnimation(.easeOut(duration: 0.18)) {
+            if foldedSpaces.contains(id) { foldedSpaces.remove(id) } else { foldedSpaces.insert(id) }
+        }
     }
+
+    func toggleOpen(project id: ID) {
+        withAnimation(.easeOut(duration: 0.18)) {
+            if openProjects.contains(id) { openProjects.remove(id) } else { openProjects.insert(id) }
+        }
+    }
+
+    /// A search or a filter narrows the library (the outline then shows only matching prompts).
+    var filtering: Bool { !query.isEmpty || (scope != .all && scope != .trash) }
 
     /// Copy the open prompt with the values typed into its blanks.
     func copyCurrent() {
         guard let p = current else { return }
         flushSave()
         copy((try? store.prompt(p.id)) ?? p, values: fillValues)
-    }
-
-    func open(_ id: ID) {
-        if !openTabs.contains(id) { openTabs.append(id) }
-        selectedID = id
-    }
-
-    func closeTab(_ id: ID) {
-        guard let i = openTabs.firstIndex(of: id) else { return }
-        openTabs.remove(at: i)
-        if selectedID == id {
-            selectedID = openTabs.isEmpty ? nil : openTabs[min(i, openTabs.count - 1)]
-        }
     }
 
     @ObservationIgnored private var pendingBody: (ID, String)?
@@ -281,11 +287,12 @@ final class AppModel {
     func newPrompt(body: String = "", title: String = "Untitled prompt") {
         flushSave()
         guard let p = try? store.createPrompt(projectID: targetProjectID, title: title, body: body) else { return }
-        if World.current == .console, scope == .trash || scope == .pinned || scope == .recent || scope == .templates { scope = .all }
+        if scope == .trash || scope == .pinned || scope == .recent || scope == .templates { scope = .all }
+        if case .project(let id) = scope, id != p.projectID { scope = .all }
         query = ""
         reloadList()
-        if World.current == .studio { open(p.id) } else { selectedID = p.id }
-        editing = true
+        selectedID = p.id
+        openProjects.insert(p.projectID)
         focusTitle = true
         reloadStructure()
     }
@@ -313,8 +320,7 @@ final class AppModel {
         flushSave()
         let restoring = scope == .trash
         try? store.setFlag(id, trashed: !restoring)
-        openTabs.removeAll { $0 == id }
-        if selectedID == id { selectedID = nil; editing = false; showRun = false }
+        if selectedID == id { selectedID = nil }
         reloadList()
         if selectedID == nil { selectedID = items.first?.id }
         show(restoring ? "Restored" : "Moved to Trash")
@@ -404,26 +410,57 @@ final class AppModel {
         guard let s = try? store.createSpace(name: name, color: color, icon: icon) else { return }
         let p = try? store.createProject(spaceID: s.id, name: "General", color: Palette.random(near: Palette.hue(color)))
         reloadStructure()
-        if let p { scope = .project(p.id) }
+        foldedSpaces.remove(s.id)
+        if let p {
+            if Variant.library == .columns { scope = .project(p.id) } else { openProjects.insert(p.id) }
+            renaming = .project(p.id)
+        }
     }
 
     func createProject(spaceID: ID, name: String, color: String) {
         guard let p = try? store.createProject(spaceID: spaceID, name: name, color: color) else { return }
         reloadStructure()
-        scope = .project(p.id)
+        foldedSpaces.remove(spaceID)
+        if Variant.library == .columns { scope = .project(p.id) } else { openProjects.insert(p.id) }
     }
 
     func save(_ s: Space) { try? store.updateSpace(s); reloadStructure() }
     func save(_ p: Project) { try? store.updateProject(p); reloadStructure() }
 
+    /// Where a deleted project's prompts go: another project in the same space if there is one.
+    func fallbackProject(excluding ids: Set<ID>, preferSpace: ID?) -> Project? {
+        let others = projects.filter { !ids.contains($0.id) }
+        return others.first { $0.spaceID == preferSpace } ?? others.first
+    }
+
+    func promptCount(in projectIDs: Set<ID>) -> Int {
+        ((try? store.allPrompts(includeTrashed: true)) ?? []).filter { projectIDs.contains($0.projectID) }.count
+    }
+
+    /// Deleting never deletes prompts: they move to another project first.
+    private func rehome(_ ids: Set<ID>, preferSpace: ID?) -> Project? {
+        guard let target = fallbackProject(excluding: ids, preferSpace: preferSpace) else { return nil }
+        for p in (try? store.allPrompts(includeTrashed: true)) ?? [] where ids.contains(p.projectID) {
+            try? store.move(p.id, toProject: target.id)
+        }
+        return target
+    }
+
     func deleteSpace(_ s: Space) {
         guard spaces.count > 1 else { show("Keep at least one space", error: true); return }
+        let ids = Set(projects.filter { $0.spaceID == s.id }.map(\.id))
+        guard let target = rehome(ids, preferSpace: nil) else { show("Make another project first", error: true); return }
         try? store.deleteSpace(s.id); scope = .all; reloadStructure(); reloadList()
+        if let id = current?.id { current = try? store.prompt(id) }
+        show("Deleted “\(s.name)”. Its prompts moved to \(target.name).")
     }
 
     func deleteProject(_ p: Project) {
         guard projects.count > 1 else { show("Keep at least one project", error: true); return }
+        guard let target = rehome([p.id], preferSpace: p.spaceID) else { return }
         try? store.deleteProject(p.id); scope = .all; reloadStructure(); reloadList()
+        if let id = current?.id { current = try? store.prompt(id) }
+        show("Deleted “\(p.name)”. Its prompts moved to \(target.name).")
     }
 
     // MARK: Versions

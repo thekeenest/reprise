@@ -2,137 +2,99 @@ import SwiftUI
 import AppKit
 import RepriseCore
 
-// MARK: Worlds
+// MARK: Variants
 
-/// A complete design. Reprise ships three, and they differ in structure, not just in color:
-/// Console is launcher-first, Board is spatial, Studio is editor-first.
-/// Each release build picks its design from Info.plist (`RepriseWorld`); Settings can switch live.
-enum World: String, CaseIterable, Identifiable {
-    /// Launcher-first: one search field, results, a run panel, an action bar. No sidebar.
-    case console = "Console"
-    /// Spatial: spaces as tabs, projects as columns, prompts as tiles. Run and edit in focused overlays.
-    case board = "Board"
-    /// Editor-first: prompts open in tabs, the library is a palette, a run inspector on the right.
-    case studio = "Studio"
-
+/// Reprise has one structure and a few finishes. Each release build picks its defaults from
+/// Info.plist (`RepriseFinish`, `RepriseAccent`, `RepriseLibrary`); Settings switches them live.
+enum Finish: String, CaseIterable, Identifiable {
+    /// Opaque warm-iron surfaces separated by hairlines.
+    case solid = "Solid"
+    /// Floating Liquid Glass panes over the desktop, with gradient fills and lit edges.
+    case glass = "Glass"
     var id: String { rawValue }
-
-    private(set) static var current: World = {
-        if let raw = UserDefaults.standard.string(forKey: "world"), let w = World(rawValue: raw) { return w }
-        if let raw = Bundle.main.object(forInfoDictionaryKey: "RepriseWorld") as? String, let w = World(rawValue: raw) { return w }
-        return .console
-    }()
-
-    static func set(_ w: World) {
-        current = w
-        UserDefaults.standard.set(w.rawValue, forKey: "world")
-        NotificationCenter.default.post(name: .worldDidChange, object: nil)
-    }
-
-    var style: Style {
-        switch self {
-        case .console: return .console
-        case .board: return .board
-        case .studio: return .studio
-        }
-    }
-
     var blurb: String {
-        switch self {
-        case .console: return "Launcher-first. Search, fill, copy. No sidebar."
-        case .board: return "Spatial. Projects as columns, prompts as tiles."
-        case .studio: return "Editor-first. Prompts in tabs, a run inspector beside the page."
-        }
+        self == .solid ? "Opaque surfaces, hairline dividers." : "Floating translucent panes over your desktop."
     }
+}
+
+enum Accent: String, CaseIterable, Identifiable {
+    case coral = "Coral"
+    case wine = "Wine"
+    var id: String { rawValue }
+    /// (light, dark) for text-level accent, and for filled buttons.
+    var text: Style.Pair { self == .coral ? .init(light: "#B8321F", dark: "#EF6A52") : .init(light: "#8E1F38", dark: "#D0566B") }
+    var fill: Style.Pair { self == .coral ? .init(light: "#C2381F", dark: "#E85A40") : .init(light: "#7D1A2E", dark: "#8E2236") }
+}
+
+enum LibraryLayout: String, CaseIterable, Identifiable {
+    /// Sidebar of spaces and projects, then a list of prompts. Notes-style.
+    case columns = "Columns"
+    /// One outline: spaces, projects and their prompts in a single tree. More room for the page.
+    case outline = "Outline"
+    var id: String { rawValue }
+    var name: String { self == .columns ? "Two columns" : "One column" }
+}
+
+enum Variant {
+    private static func read<T: RawRepresentable>(_ key: String, _ plist: String, _ fallback: T) -> T where T.RawValue == String {
+        if let raw = UserDefaults.standard.string(forKey: key), let v = T(rawValue: raw) { return v }
+        if let raw = Bundle.main.object(forInfoDictionaryKey: plist) as? String, let v = T(rawValue: raw) { return v }
+        return fallback
+    }
+
+    private(set) static var finish: Finish = read("finish", "RepriseFinish", Finish.solid)
+    private(set) static var accent: Accent = read("accent", "RepriseAccent", Accent.coral)
+    private(set) static var library: LibraryLayout = read("libraryLayout", "RepriseLibrary", LibraryLayout.columns)
+
+    static var glass: Bool { finish == .glass }
+
+    static func set(finish f: Finish) { finish = f; UserDefaults.standard.set(f.rawValue, forKey: "finish"); changed() }
+    static func set(accent a: Accent) { accent = a; UserDefaults.standard.set(a.rawValue, forKey: "accent"); changed() }
+    static func set(library l: LibraryLayout) { library = l; UserDefaults.standard.set(l.rawValue, forKey: "libraryLayout"); changed() }
+
+    /// Changes whenever any variant changes; views key their identity on it.
+    static var signature: String { "\(finish.rawValue)-\(accent.rawValue)-\(library.rawValue)" }
+
+    private static func changed() { NotificationCenter.default.post(name: .variantDidChange, object: nil) }
 }
 
 extension Notification.Name {
-    static let worldDidChange = Notification.Name("reprise.worldDidChange")
+    static let variantDidChange = Notification.Name("reprise.variantDidChange")
 }
 
-/// Everything a design decides about surface. Views never hard-code a color, face or radius.
+/// Everything about surface. Views never hard-code a color, face or radius.
 struct Style {
     struct Pair { var light: String; var dark: String }
 
-    var paper, paperDeep, raised, ink, slate, ash, accent: Pair
-    /// The primary button: its fill and its label.
-    var fill, onFill: Pair
+    var paper, paperMid, paperDeep, raised, ink, slate, ash: Pair
+    var onFill: Pair
     var ruleAlpha: (light: CGFloat, dark: CGFloat)
     var washAlpha: (light: CGFloat, dark: CGFloat)
 
-    var textDesign: Font.Design
-    var titleSize: CGFloat
-    var titleWeight: Font.Weight
-    var titleTracking: CGFloat
-    var entryWeight: Font.Weight
+    var textDesign: Font.Design = .serif
+    var titleSize: CGFloat = 28
+    var titleWeight: Font.Weight = .regular
+    var titleTracking: CGFloat = 0
+    var entryWeight: Font.Weight = .regular
+    var labelTracking: CGFloat = 0.8
+    var labelWeight: Font.Weight = .medium
+    var radius: CGFloat = 8
+    var detent = true
+    var editorFont: EditorFont = .serif
+    var editorSize: Double = 15
+    var lineHeight: CGFloat = 1.45
 
-    enum Labels { case smallCaps, uppercase, plain }
-    var labels: Labels
-    var labelTracking: CGFloat
-    var labelWeight: Font.Weight
-
-    var radius: CGFloat
-    enum Keys { case letters, numberCaps, roman }
-    var keys: Keys
-    enum Selection { case bracket, fill, accentTitle }
-    var selection: Selection
-    var detent: Bool
-    var primaryFilled: Bool
-
-    var editorFont: EditorFont
-    var editorSize: Double
-    var lineHeight: CGFloat
-
-    /// Console: cool graphite, one coral signal, Raycast-grade density.
-    static let console = Style(
-        paper: .init(light: "#F7F7F8", dark: "#111113"),
-        paperDeep: .init(light: "#EEEEF0", dark: "#0B0B0C"),
-        raised: .init(light: "#FFFFFF", dark: "#18181B"),
-        ink: .init(light: "#18181B", dark: "#EDEDEF"),
-        slate: .init(light: "#5E5E66", dark: "#9A9AA3"),
-        ash: .init(light: "#A1A1AA", dark: "#5C5C63"),
-        accent: .init(light: "#E5532F", dark: "#FF7452"),
-        fill: .init(light: "#E5532F", dark: "#FF6A45"),
-        onFill: .init(light: "#FFFFFF", dark: "#160B07"),
-        ruleAlpha: (0.1, 0.09), washAlpha: (0.04, 0.05),
-        textDesign: .default, titleSize: 22, titleWeight: .semibold, titleTracking: -0.3, entryWeight: .regular,
-        labels: .plain, labelTracking: 0, labelWeight: .medium,
-        radius: 8, keys: .numberCaps, selection: .fill, detent: false, primaryFilled: true,
-        editorFont: .sans, editorSize: 14, lineHeight: 1.5)
-
-    /// Board: monochrome near-black, white primary, one mint for blanks.
-    static let board = Style(
-        paper: .init(light: "#FBFBFA", dark: "#0E0F10"),
-        paperDeep: .init(light: "#F2F2F0", dark: "#08090A"),
-        raised: .init(light: "#FFFFFF", dark: "#161719"),
-        ink: .init(light: "#141516", dark: "#F2F3F3"),
-        slate: .init(light: "#62666D", dark: "#8B9097"),
-        ash: .init(light: "#A3A7AD", dark: "#565A60"),
-        accent: .init(light: "#0F8F5F", dark: "#5EE0A8"),
-        fill: .init(light: "#141516", dark: "#F2F3F3"),
-        onFill: .init(light: "#FFFFFF", dark: "#0E0F10"),
-        ruleAlpha: (0.09, 0.08), washAlpha: (0.035, 0.045),
-        textDesign: .default, titleSize: 24, titleWeight: .semibold, titleTracking: -0.5, entryWeight: .medium,
-        labels: .uppercase, labelTracking: 0.8, labelWeight: .semibold,
-        radius: 10, keys: .letters, selection: .fill, detent: false, primaryFilled: true,
-        editorFont: .sans, editorSize: 14.5, lineHeight: 1.55)
-
-    /// Studio: warm iron and bone, New York titles, one vermilion. The Edition's heir.
-    static let studio = Style(
-        paper: .init(light: "#F3F1EB", dark: "#161514"),
-        paperDeep: .init(light: "#EAE7DF", dark: "#0F0E0D"),
-        raised: .init(light: "#FBFAF6", dark: "#1D1C1A"),
+    /// Warm iron and bone, New York for the page and titles, SF for controls.
+    static let base = Style(
+        paper: .init(light: "#F7F5F0", dark: "#161514"),
+        paperMid: .init(light: "#F1EEE8", dark: "#131211"),
+        paperDeep: .init(light: "#EAE7E0", dark: "#0F0E0D"),
+        raised: .init(light: "#FFFFFF", dark: "#1F1E1C"),
         ink: .init(light: "#1B1A18", dark: "#ECE9E1"),
         slate: .init(light: "#5F5D57", dark: "#A6A39B"),
         ash: .init(light: "#98958C", dark: "#6F6C65"),
-        accent: .init(light: "#B8321F", dark: "#EF6A52"),
-        fill: .init(light: "#B8321F", dark: "#E85A40"),
         onFill: .init(light: "#FFFFFF", dark: "#FFFFFF"),
-        ruleAlpha: (0.16, 0.12), washAlpha: (0.045, 0.05),
-        textDesign: .serif, titleSize: 28, titleWeight: .regular, titleTracking: 0, entryWeight: .regular,
-        labels: .smallCaps, labelTracking: 0.8, labelWeight: .medium,
-        radius: 4, keys: .letters, selection: .bracket, detent: true, primaryFilled: true,
-        editorFont: .serif, editorSize: 15, lineHeight: 1.45)
+        ruleAlpha: (0.12, 0.10), washAlpha: (0.045, 0.055))
 }
 
 /// The theme setting. Dark is the default in every design.
@@ -157,38 +119,36 @@ enum Look: String, CaseIterable, Identifiable {
 
 // MARK: Tokens
 
-/// Design tokens, resolved against the current world and the view's appearance at draw time.
+/// Design tokens, resolved against the current variant and the view's appearance at draw time.
 enum Folio {
-    private static func dyn(_ pick: @escaping (Style) -> Style.Pair, alpha: ((Style) -> (CGFloat, CGFloat))? = nil) -> NSColor {
+    private static func dyn(_ pick: @escaping () -> Style.Pair, alpha: (CGFloat, CGFloat)? = nil) -> NSColor {
         NSColor(name: nil) { ap in
-            let s = World.current.style
             let dark = ap.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            let p = pick(s)
-            let a = alpha?(s)
-            return NSColor(hex: dark ? p.dark : p.light).withAlphaComponent(a.map { dark ? $0.1 : $0.0 } ?? 1)
+            let p = pick()
+            return NSColor(hex: dark ? p.dark : p.light).withAlphaComponent(alpha.map { dark ? $0.1 : $0.0 } ?? 1)
         }
     }
+    private static var s: Style { .base }
 
-    static let nsPaper = dyn { $0.paper }
-    static let nsPaperDeep = dyn { $0.paperDeep }
-    static let nsRaised = dyn { $0.raised }
-    static let nsFill = dyn { $0.fill }
-    static let nsOnFill = dyn { $0.onFill }
-    static let nsInk = dyn { $0.ink }
-    static let nsSlate = dyn { $0.slate }
-    static let nsAsh = dyn { $0.ash }
-    static let nsRule = dyn({ $0.ink }, alpha: { ($0.ruleAlpha.light, $0.ruleAlpha.dark) })
-    static let nsRubric = dyn { $0.accent }
-    static let nsWash = dyn({ $0.ink }, alpha: { ($0.washAlpha.light, $0.washAlpha.dark) })
-    static let nsSelection = dyn({ $0.accent }, alpha: { _ in (0.16, 0.28) })
-    static let nsAccentSoft = dyn({ $0.accent }, alpha: { _ in (0.35, 0.4) })
-    static let nsOnAccent = NSColor(name: nil) { ap in
-        ap.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(hex: "#141416") : .white
-    }
+    static let nsPaper = dyn { s.paper }
+    static let nsPaperMid = dyn { s.paperMid }
+    static let nsPaperDeep = dyn { s.paperDeep }
+    static let nsRaised = dyn { s.raised }
+    static let nsFill = dyn { Variant.accent.fill }
+    static let nsOnFill = dyn { s.onFill }
+    static let nsInk = dyn { s.ink }
+    static let nsSlate = dyn { s.slate }
+    static let nsAsh = dyn { s.ash }
+    static let nsRule = dyn({ s.ink }, alpha: (s.ruleAlpha.light, s.ruleAlpha.dark))
+    static let nsRubric = dyn { Variant.accent.text }
+    static let nsWash = dyn({ s.ink }, alpha: (s.washAlpha.light, s.washAlpha.dark))
+    static let nsSelection = dyn({ Variant.accent.text }, alpha: (0.16, 0.28))
+    static let nsAccentSoft = dyn({ Variant.accent.text }, alpha: (0.35, 0.4))
 
     static let paper = Color(nsColor: nsPaper)
+    static let paperMid = Color(nsColor: nsPaperMid)
     static let paperDeep = Color(nsColor: nsPaperDeep)
-    /// Surfaces that sit above the ground: fields, tiles, cards, the run panel.
+    /// Surfaces that sit above the ground: fields, menus, cards.
     static let raised = Color(nsColor: nsRaised)
     static let fill = Color(nsColor: nsFill)
     static let onFill = Color(nsColor: nsOnFill)
@@ -196,44 +156,20 @@ enum Folio {
     static let slate = Color(nsColor: nsSlate)
     static let ash = Color(nsColor: nsAsh)
     static let rule = Color(nsColor: nsRule)
-    /// The world's one accent (rubric, signal orange, ink blue). Only for blanks and playing.
+    /// The one accent. Only for blanks, the caret, the primary buttons and the current selection.
     static let rubric = Color(nsColor: nsRubric)
     static let wash = Color(nsColor: nsWash)
-    static let onAccent = Color(nsColor: nsOnAccent)
 
-    static var style: Style { World.current.style }
-    static var radius: CGFloat { style.radius }
-
-    /// Blank keys in the world's numbering: A B C, 1 2 3, or i ii iii.
-    static func key(_ i: Int) -> String {
-        switch style.keys {
-        case .letters:
-            let letters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            return i < 26 ? String(letters[i]) : String(letters[i / 26 - 1]) + String(letters[i % 26])
-        case .numberCaps:
-            return String(i + 1)
-        case .roman:
-            return roman(i + 1).lowercased()
-        }
-    }
-
-    private static func roman(_ n: Int) -> String {
-        let table: [(Int, String)] = [(1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
-                                      (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]
-        var n = n, out = ""
-        for (v, s) in table { while n >= v { out += s; n -= v } }
-        return out
-    }
+    static var style: Style { .base }
+    static var radius: CGFloat { Variant.glass ? 10 : style.radius }
 }
 
 extension Font {
-    /// The caption voice: small caps (Edition) or tracked capitals (Machined, Quiet).
+    /// The caption voice: SF small caps, tracked.
     static func apparatus(_ size: CGFloat = 10.5, weight: Font.Weight? = nil) -> Font {
-        let s = Folio.style
-        let f = Font.system(size: s.labels == .uppercase ? size * 0.9 : size + (s.labels == .plain ? 1 : 0), weight: weight ?? s.labelWeight)
-        return s.labels == .smallCaps ? f.lowercaseSmallCaps() : f
+        Font.system(size: size, weight: weight ?? Folio.style.labelWeight).lowercaseSmallCaps()
     }
-    /// The text voice: New York in Edition, SF Pro elsewhere.
+    /// The text voice: New York.
     static func text(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: Folio.style.textDesign)
     }
@@ -254,10 +190,9 @@ struct Caps: View {
         self.text = text; self.color = color; self.size = size
     }
     var body: some View {
-        let s = Folio.style
-        Text(s.labels == .smallCaps ? text.lowercased() : s.labels == .uppercase ? text.uppercased() : text)
+        Text(text.lowercased())
             .font(.apparatus(size))
-            .tracking(s.labelTracking)
+            .tracking(Folio.style.labelTracking)
             .foregroundStyle(color)
     }
 }
@@ -275,13 +210,13 @@ struct Hairline: View {
     }
 }
 
-/// Edition's section mark: a rule with a small rubric detent. Other worlds draw a plain rule.
+/// The section mark under the title: a rule with a small accent detent.
 struct DetentRule: View {
     var body: some View {
         if Folio.style.detent {
             HStack(spacing: 6) {
                 Hairline()
-                Rectangle().fill(Folio.rubric).frame(width: 4, height: 4)
+                Circle().fill(Folio.rubric).frame(width: 4, height: 4)
                 Hairline()
             }
         } else {
@@ -290,77 +225,21 @@ struct DetentRule: View {
     }
 }
 
-/// The key beside each blank, matching the accent placeholders in the text.
-struct BlankKey: View {
-    var index: Int
-    var body: some View {
-        switch Folio.style.keys {
-        case .letters:
-            Text(Folio.key(index))
-                .font(.text(12, weight: .semibold))
-                .foregroundStyle(Folio.rubric)
-                .frame(width: 16, alignment: .leading)
-        case .numberCaps:
-            Text(Folio.key(index))
-                .font(.system(size: 10, weight: .bold).monospacedDigit())
-                .foregroundStyle(Folio.onFill)
-                .frame(width: 16, height: 16)
-                .background(Folio.fill, in: RoundedRectangle(cornerRadius: 3.5, style: .continuous))
-                .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 4 }
-        case .roman:
-            Text(Folio.key(index))
-                .font(.system(size: 12, weight: .regular, design: .serif).italic())
-                .foregroundStyle(Folio.rubric)
-                .frame(width: 22, alignment: .leading)
-        }
-    }
-}
-
-/// Selection treatment for index rows: Edition brackets, Machined fills, Quiet colors the title.
+/// Selection for list rows: a soft rounded fill, accent-tinted while the list has focus.
 struct SelectionBackground: View {
     var selected: Bool
     var active: Bool
     var hovering: Bool
     var body: some View {
-        let s = Folio.style
-        let shape = RoundedRectangle(cornerRadius: s.radius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Folio.radius, style: .continuous)
         Group {
             if selected {
-                switch s.selection {
-                case .bracket:
-                    shape.fill(Folio.wash).overlay(shape.strokeBorder(active ? Folio.rubric : Folio.rule, lineWidth: 1))
-                case .fill:
-                    shape.fill(Folio.ink.opacity(active ? 0.09 : 0.06))
-                case .accentTitle:
-                    shape.fill(Folio.wash)
-                }
+                shape.fill(Folio.ink.opacity(active ? 0.1 : 0.07))
             } else if hovering {
-                shape.fill(Folio.wash.opacity(0.6))
+                shape.fill(Folio.wash)
             }
         }
         .padding(.horizontal, 6)
-    }
-}
-
-/// The world's primary-action treatment outside the toolbar.
-struct PrimaryLabel: View {
-    var title: String
-    var shortcut: String
-    var body: some View {
-        let s = Folio.style
-        let shape = RoundedRectangle(cornerRadius: s.radius, style: .continuous)
-        HStack {
-            Text(title)
-            Spacer()
-            Text(shortcut).font(.system(size: 11).monospacedDigit()).opacity(0.8)
-        }
-        .font(.system(size: 12.5, weight: .medium))
-        .foregroundStyle(s.primaryFilled ? Folio.onFill : Folio.rubric)
-        .padding(.horizontal, 12)
-        .frame(height: 30)
-        .background { if s.primaryFilled { shape.fill(Folio.fill) } }
-        .overlay { if !s.primaryFilled { shape.strokeBorder(Folio.rubric, lineWidth: 1) } }
-        .contentShape(shape)
     }
 }
 
@@ -369,17 +248,10 @@ struct ColorKey: View {
     var hex: String
     var size: CGFloat = 7
     var body: some View {
-        RoundedRectangle(cornerRadius: Folio.radius > 0 ? size * 0.28 : 0, style: .continuous)
+        RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
             .fill(Color(hex: hex))
             .frame(width: size, height: size)
     }
-}
-
-/// The window ground. Dynamic colors follow the theme; there is no tinted glass.
-struct Ground: View {
-    var look: Look = .dark
-    var deep = false
-    var body: some View { deep ? Folio.paperDeep : Folio.paper }
 }
 
 struct VisualEffect: NSViewRepresentable {
@@ -394,6 +266,67 @@ struct VisualEffect: NSViewRepresentable {
     func updateNSView(_ v: NSVisualEffectView, context: Context) { v.material = material }
 }
 
+/// A surface region of the window. Solid: a flat ground. Glass: a floating pane with a
+/// top-lit gradient fill, a lit edge and a soft shadow, over the blurred desktop.
+struct PaneBackground: View {
+    enum Tone { case deep, mid, page }
+    var tone: Tone
+    var body: some View {
+        if Variant.glass {
+            GlassPane(strong: tone == .page)
+        } else {
+            switch tone {
+            case .deep: Folio.paperDeep
+            case .mid: Folio.paperMid
+            case .page: Folio.paper
+            }
+        }
+    }
+}
+
+struct GlassPane: View {
+    var strong = false
+    var radius: CGFloat = 18
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        let dark = scheme == .dark
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        shape
+            .fill(LinearGradient(colors: dark
+                                 ? [.white.opacity(strong ? 0.085 : 0.065), .white.opacity(strong ? 0.035 : 0.022)]
+                                 : [.white.opacity(strong ? 0.62 : 0.48), .white.opacity(strong ? 0.42 : 0.3)],
+                                 startPoint: .top, endPoint: .bottom))
+            .overlay(shape.strokeBorder(LinearGradient(colors: dark
+                                                       ? [.white.opacity(0.22), .white.opacity(0.04)]
+                                                       : [.white.opacity(0.9), .white.opacity(0.35)],
+                                                       startPoint: .top, endPoint: .bottom), lineWidth: 1))
+            .shadow(color: .black.opacity(dark ? 0.28 : 0.08), radius: 18, y: 8)
+    }
+}
+
+/// The window ground. Solid: the deepest paper. Glass: the desktop, blurred and toned down.
+struct WindowGround: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        if Variant.glass {
+            ZStack {
+                VisualEffect(material: scheme == .dark ? .hudWindow : .underWindowBackground)
+                LinearGradient(colors: scheme == .dark
+                               ? [Color.black.opacity(0.42), Color.black.opacity(0.62)]
+                               : [Color.white.opacity(0.10), Color.white.opacity(0.28)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                // A breath of the accent from one corner, as in the reference.
+                RadialGradient(colors: [Folio.fill.opacity(scheme == .dark ? 0.22 : 0.10), .clear],
+                               center: .bottomLeading, startRadius: 0, endRadius: 760)
+                RadialGradient(colors: [Color.white.opacity(scheme == .dark ? 0.05 : 0.12), .clear],
+                               center: .topTrailing, startRadius: 0, endRadius: 640)
+            }
+        } else {
+            Folio.paperDeep
+        }
+    }
+}
+
 /// A bordered key cap for shortcut hints.
 struct KeyCap: View {
     var key: String
@@ -403,7 +336,7 @@ struct KeyCap: View {
             .foregroundStyle(Folio.ink)
             .padding(.horizontal, 5)
             .frame(minWidth: 18, minHeight: 17)
-            .overlay(RoundedRectangle(cornerRadius: min(Folio.radius, 4), style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 4.5, style: .continuous).strokeBorder(Folio.rule, lineWidth: 1))
     }
 }
 
@@ -422,8 +355,8 @@ enum EditorFont: String, CaseIterable, Identifiable {
         }
     }
 
-    /// "Auto" (empty) follows the world's typeface.
-    static func resolve(_ raw: String) -> EditorFont { EditorFont(rawValue: raw) ?? World.current.style.editorFont }
+    /// "Auto" (empty) is New York.
+    static func resolve(_ raw: String) -> EditorFont { EditorFont(rawValue: raw) ?? Folio.style.editorFont }
 }
 
 extension Color {

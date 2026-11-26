@@ -50,7 +50,7 @@ struct ShadePicker: View {
                 Button { onPick(c) } label: {
                     Rectangle().fill(Color(hex: c))
                         .frame(width: 22, height: 22)
-                        .overlay(Rectangle().strokeBorder(Folio.ink.opacity(c == hex ? 1 : 0), lineWidth: 1).padding(-3))
+                        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Folio.ink.opacity(c == hex ? 1 : 0), lineWidth: 1).padding(-3))
                 }
                 .buttonStyle(.plain)
             }
@@ -67,6 +67,7 @@ struct NamingSheet: View {
     @State private var color = Palette.random()
     @State private var icon = "square.stack.3d.up.fill"
     @State private var showColors = false
+    @State private var spaceID: ID = 0
 
     static let icons = ["square.stack.3d.up", "hammer", "briefcase", "sparkle.magnifyingglass", "brain.head.profile",
                         "chevron.left.forwardslash.chevron.right", "paintbrush.pointed", "megaphone", "chart.line.uptrend.xyaxis",
@@ -89,7 +90,8 @@ struct NamingSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(heading).font(.text(22)).foregroundStyle(Folio.ink)
-                Text(isSpace ? "An area of your work: a client, research, open source." : "A named home for related prompts.")
+                Text(isSpace ? "A broad area of your work, such as Engineering, Research or a client. Spaces hold projects."
+                             : "A named home for related prompts, inside a space.")
                     .font(.system(size: 12.5)).foregroundStyle(Folio.slate)
                 Hairline().padding(.top, 6)
             }
@@ -99,10 +101,24 @@ struct NamingSheet: View {
                 .controlSize(.large)
                 .onSubmit(save)
 
+            if !isSpace {
+                HStack(spacing: 8) {
+                    Caps("Space").frame(width: 48, alignment: .leading)
+                    Picker("", selection: $spaceID) {
+                        ForEach(model.spaces) { Text($0.name).tag($0.id) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    Button("New Space…") { dismiss(); DispatchQueue.main.async { model.namingRequest = .init(kind: .newSpace) } }
+                        .buttonStyle(GhostButtonStyle(height: 24))
+                        .font(.system(size: 11.5))
+                }
+            }
+
             HStack(spacing: 8) {
                 Caps("Color").frame(width: 48, alignment: .leading)
                 Button { showColors.toggle() } label: {
-                    ColorKey(hex: color, size: 16).overlay(Rectangle().strokeBorder(Folio.ink, lineWidth: 1).padding(-3))
+                    ColorKey(hex: color, size: 16).overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Folio.ink, lineWidth: 1).padding(-3))
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showColors) { ShadePicker(hex: color) { color = $0 } }
@@ -121,7 +137,7 @@ struct NamingSheet: View {
                         Button { icon = i } label: {
                             Image(systemName: i).frame(width: 28, height: 28)
                                 .foregroundStyle(icon == i ? Folio.ink : Folio.slate)
-                                .overlay(Rectangle().strokeBorder(icon == i ? Folio.ink : .clear, lineWidth: 1))
+                                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(icon == i ? Folio.ink : .clear, lineWidth: 1))
                         }
                         .buttonStyle(.plain)
                     }
@@ -132,7 +148,7 @@ struct NamingSheet: View {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(isNew ? "Create" : "Save", action: save)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(FilledButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -143,8 +159,8 @@ struct NamingSheet: View {
         .onAppear {
             switch request.kind {
             case .editSpace(let s): name = s.name; color = s.color; icon = s.icon
-            case .editProject(let p): name = p.name; color = p.color
-            case .newProject(let sid): color = Palette.random(near: model.space(sid).map { Palette.hue($0.color) })
+            case .editProject(let p): name = p.name; color = p.color; spaceID = p.spaceID
+            case .newProject(let sid): spaceID = sid; color = Palette.random(near: model.space(sid).map { Palette.hue($0.color) })
             case .newSpace: break
             }
         }
@@ -159,9 +175,9 @@ struct NamingSheet: View {
         guard !n.isEmpty else { return }
         switch request.kind {
         case .newSpace: model.createSpace(name: n, color: color, icon: icon)
-        case .newProject(let sid): model.createProject(spaceID: sid, name: n, color: color)
+        case .newProject(let sid): model.createProject(spaceID: spaceID == 0 ? sid : spaceID, name: n, color: color)
         case .editSpace(var s): s.name = n; s.color = color; s.icon = icon; model.save(s)
-        case .editProject(var p): p.name = n; p.color = color; model.save(p)
+        case .editProject(var p): p.name = n; p.color = color; if spaceID != 0 { p.spaceID = spaceID }; model.save(p)
         }
         dismiss()
     }
@@ -187,7 +203,6 @@ struct FillSheet: View {
                     VStack(alignment: .leading, spacing: 14) {
                         ForEach(Array(vars.enumerated()), id: \.element.id) { i, v in
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                BlankKey(index: i)
                                 VariableField(variable: v, value: binding(v), focused: $focused)
                             }
                         }

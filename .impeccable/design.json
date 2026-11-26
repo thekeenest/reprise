@@ -1,24 +1,28 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-25T10:45:21.290914+00:00",
+  "generatedAt": "2026-11-26T19:03:11.171309+00:00",
   "title": "Design System: Reprise",
   "extensions": {
     "colorMeta": {
       "ground": {
         "role": "neutral",
-        "displayName": "Graphite ground"
+        "displayName": "Iron (page)"
+      },
+      "ground-mid": {
+        "role": "neutral",
+        "displayName": "Iron, list"
       },
       "ground-deep": {
         "role": "neutral",
-        "displayName": "Graphite, deep"
+        "displayName": "Iron, deep"
       },
       "raised": {
         "role": "neutral",
-        "displayName": "Raised (fields, rows)"
+        "displayName": "Raised"
       },
       "ink": {
         "role": "neutral",
-        "displayName": "Ink"
+        "displayName": "Bone ink"
       },
       "slate": {
         "role": "neutral",
@@ -28,13 +32,21 @@
         "role": "neutral",
         "displayName": "Ash"
       },
-      "signal": {
+      "coral": {
         "role": "primary",
-        "displayName": "Coral signal"
+        "displayName": "Coral"
       },
-      "fill": {
+      "coral-fill": {
         "role": "primary",
         "displayName": "Coral fill"
+      },
+      "wine": {
+        "role": "primary",
+        "displayName": "Wine"
+      },
+      "wine-fill": {
+        "role": "primary",
+        "displayName": "Wine fill (burgundy)"
       },
       "on-fill": {
         "role": "neutral",
@@ -42,88 +54,45 @@
       },
       "light-ground": {
         "role": "neutral",
-        "displayName": "Light ground"
+        "displayName": "Bone"
       },
       "light-ink": {
         "role": "neutral",
-        "displayName": "Light ink"
+        "displayName": "Iron ink"
       },
-      "light-signal": {
+      "light-coral": {
         "role": "primary",
-        "displayName": "Coral on light"
+        "displayName": "Coral on bone"
+      },
+      "light-wine": {
+        "role": "primary",
+        "displayName": "Wine on bone"
       }
     },
     "typographyMeta": {
       "title": {
         "displayName": "Title",
-        "purpose": "The selected prompt's name."
+        "purpose": "The prompt's name, New York."
       },
-      "search": {
-        "displayName": "Search",
-        "purpose": "The command bar input."
+      "page": {
+        "displayName": "Page",
+        "purpose": "The prompt text in the editor."
       },
-      "row": {
-        "displayName": "Row",
-        "purpose": "Result titles."
+      "entry": {
+        "displayName": "Entry",
+        "purpose": "Prompt titles in the list and outline."
       },
-      "body": {
-        "displayName": "Body",
-        "purpose": "Prompt text in the editor and the copied preview."
+      "control": {
+        "displayName": "Control",
+        "purpose": "Sidebar rows, fields, buttons."
       },
       "caption": {
         "displayName": "Caption",
-        "purpose": "Project, counts, section names."
+        "purpose": "Small caps: place, stats, sections, metadata."
       },
       "placeholder": {
         "displayName": "Placeholder",
-        "purpose": "{{blanks}} in the editor, in the signal color."
-      }
-    },
-    "worlds": {
-      "console": {
-        "build": "Reprise.app",
-        "default": true,
-        "structure": "Launcher-first: command bar, results, run panel, action bar. No sidebar.",
-        "dark": {
-          "ground": "#111113",
-          "ink": "#EDEDEF",
-          "signal": "#FF7452"
-        },
-        "light": {
-          "ground": "#F7F7F8",
-          "ink": "#18181B",
-          "signal": "#E5532F"
-        }
-      },
-      "board": {
-        "build": "Reprise Board.app",
-        "structure": "Spatial: space tabs, project columns, prompt tiles, run and edit cards.",
-        "dark": {
-          "ground": "#0E0F10",
-          "ink": "#F2F3F3",
-          "signal": "#5EE0A8",
-          "fill": "#F2F3F3"
-        },
-        "light": {
-          "ground": "#FBFBFA",
-          "ink": "#141516",
-          "signal": "#0F8F5F",
-          "fill": "#141516"
-        }
-      },
-      "studio": {
-        "build": "Reprise Studio.app",
-        "structure": "Editor-first: tabs, ⌘P palette, Run/Details inspector, status bar.",
-        "dark": {
-          "ground": "#161514",
-          "ink": "#ECE9E1",
-          "signal": "#EF6A52"
-        },
-        "light": {
-          "ground": "#F3F1EB",
-          "ink": "#1B1A18",
-          "signal": "#B8321F"
-        }
+        "purpose": "{{blanks}} in the accent."
       }
     },
     "shadows": [],
@@ -147,44 +116,73 @@
       ],
       "default": "Dark",
       "shortcut": "⇧⌘L"
+    },
+    "variants": {
+      "finish": {
+        "options": [
+          "Solid",
+          "Glass"
+        ],
+        "default": "Solid"
+      },
+      "accent": {
+        "options": [
+          "Coral",
+          "Wine"
+        ],
+        "default": "Coral"
+      },
+      "library": {
+        "options": [
+          "Two columns",
+          "One column"
+        ],
+        "default": "Two columns"
+      },
+      "builds": {
+        "Reprise.app": "Solid · Coral · Two columns",
+        "Reprise Wine.app": "Solid · Wine · One column",
+        "Reprise Glass.app": "Glass · Coral · Two columns",
+        "Reprise Glass Wine.app": "Glass · Wine · One column"
+      }
     }
   },
   "components": [
     {
       "name": "New Prompt",
       "kind": "button-primary",
-      "note": "Filled, top right of every design."
+      "note": "Top right of the page. Hover: lift, glow, sheen, the plus turns."
     },
     {
       "name": "Copy Prompt",
       "kind": "button-copy",
-      "note": "The only primary action. ⌘↩. Sits under the What-gets-copied preview."
+      "note": "Under the blanks; hugs its label. ⌘↩."
     },
     {
-      "name": "Run panel",
-      "kind": "composite",
-      "note": "Blank fields, payload preview with token count, Copy Prompt."
+      "name": "Blank field",
+      "kind": "field",
+      "note": "Name above a raised field; no key letters."
     },
     {
-      "name": "Actions menu",
-      "kind": "menu",
-      "note": "Pin, Duplicate, Move, Shuffle Color, Copy Template Source, Publish, Versions, Trash."
+      "name": "Fold",
+      "kind": "disclosure",
+      "note": "Includes, Files & links, Agents, Record: one line each until opened."
     },
     {
-      "name": "Console action bar",
-      "kind": "bar",
-      "note": "Clickable shortcut hints: Copy ⌘↩, Edit ⌘E, New ⌘N, Search ⌘K."
+      "name": "Space row",
+      "kind": "sidebar",
+      "note": "Chevron, name; hover shows + (new project) and ⋯. Double-click renames."
     },
     {
-      "name": "Board tile",
-      "kind": "card",
-      "note": "Title, cleaned excerpt, Template marker, uses, tokens. Draggable between columns."
+      "name": "Project row",
+      "kind": "sidebar",
+      "note": "Color key, name, count; drop target; context menu to rename, recolor, move, delete."
     },
     {
-      "name": "Studio tab",
-      "kind": "tab",
-      "note": "2pt signal rule on the selected tab top edge."
+      "name": "Glass pane",
+      "kind": "surface",
+      "note": "18 pt radius, gradient fill, gradient edge, soft shadow, 8 pt gaps."
     }
   ],
-  "narrative": "Three designs with three different structures (Console, Board, Studio), one library, one primary action (Copy Prompt), New Prompt always visible, Dark by default. See DESIGN.md."
+  "narrative": "One structure (library, page, inspector) with the page given the most room. Finishes: Solid and Glass; accents: Coral and Wine; library: two columns or one outline. Rounded everywhere, buttons hug content, one Copy action, dark by default. See DESIGN.md."
 }

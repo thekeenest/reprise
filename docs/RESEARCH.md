@@ -117,7 +117,7 @@ Each competitor has one or two of these. Reprise ships all five on day one.
 | Images and links pasted into agents | Attachments copied into the library; absolute paths and URLs appended on use |
 | Rich-text mangling (smart quotes) | Plain-text storage, smart substitutions off, prompt-aware highlighting (XML tags) |
 | Fear of data loss (extension reviews) | Autosave, 50-version history, WAL, Markdown export |
-| Taste-driven users; "must not feel vibe-coded or like a notes app" | Three structurally different designs (Console, Board, Studio), dark by default, one Copy action (see section 6) |
+| Taste-driven users; "must not feel vibe-coded or like a notes app" | A page-first layout with a user-owned hierarchy, Solid and Liquid Glass finishes, two accents, dark by default, one Copy action (see section 6) |
 
 ### Deliberately *not* built (yet)
 - **Cloud accounts / sync service.** Conflicts with local-first; `REPRISE_HOME` on an iCloud folder covers the simple case.
@@ -166,3 +166,30 @@ Decisions:
 | Light-first | Theme setting in every design, **Dark by default** |
 
 The three designs, their tokens and rules are in [`DESIGN.md`](../DESIGN.md).
+
+### Round three: the synthesis (v0.4)
+The user compared all six apps (0.2 Edition, Machined, Quiet; 0.3 Console, Board, Studio) and named what to keep and what to drop:
+
+| Kept | From |
+|---|---|
+| The page gets the most room; New York text, colorful placeholders, the token count and save state on the line under the title | 0.3 Studio |
+| A Notes-style list of prompts, top to bottom | 0.2 Edition |
+| A narrow right panel with the blanks first | 0.2 margin |
+| Coral accent, plus a burgundy option to try | 0.3 Studio, user request |
+
+| Dropped | Why | Replaced by |
+|---|---|---|
+| Full-width Copy button | Buttons much wider than their label look broken | Buttons hug their content |
+| Square corners next to rounded ones | Two corner styles in one window; rounded preferred | Rounded everywhere; capsules in Glass |
+| Browser-style tabs | Not modern | Sidebar + list, or one outline |
+| "What gets copied" preview box | Heavy, inconvenient, duplicates the page | The page is the source of truth; tokens in the stats line |
+| Bright colored A/B keys before field names | Noise | Field name above the field, no keys |
+| A fixed, unexplained Space / Project set | The user couldn't see where it was defined or change it | Both levels managed in the sidebar (create, rename in place, recolor, move, delete); the place line is a menu with New Project and New Space |
+
+References for this round:
+
+- **Liquid Glass.** The user's reference is a visionOS-style dashboard: dark frosted panes over a blurred photo, lighter inner cards, white type, and orange capsule actions. Apple's SwiftUI API groups glass shapes in a [`GlassEffectContainer`](https://developer.apple.com/documentation/swiftui/glasseffectcontainer) and defaults [`glassEffect`](https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)) to a capsule. Community references ([LiquidGlassReference](https://github.com/conorluddy/LiquidGlassReference)) add a caveat: glass cannot sample other glass, so panes need a real backdrop. Reprise therefore blurs the desktop behind the window (HUD material, toned 42–62% black) and floats panes with gradient fills and gradient edges over it. Controls in Glass are capsules, like Apple's glass controls.
+- **Two-level hierarchies.** Things 3's Areas → Projects is the model ([guide](https://vanja.io/things-3-complete-guide/)): areas are few and stable, projects come and go, and both are edited where they are listed. Reviewers [find the Areas display confusing at times](https://apps.apple.com/gb/app/things-3/id904280696), so Reprise names both levels in all copy ("Space", "Project") and shows the full path on every prompt.
+- **Burgundy on dark.** `#800020` measures [about 1.9:1 on black](https://moda.app/resources/colors/burgundy), and the usual advice is to use burgundy as a surface or fill and a lighter step for text on dark grounds. Wine uses a `#8E2236` fill under white labels and a `#D0566B` text accent for placeholders.
+
+The result ships as four builds that vary finish, accent and library layout. All four can switch every variant live; see [`DESIGN.md`](../DESIGN.md).

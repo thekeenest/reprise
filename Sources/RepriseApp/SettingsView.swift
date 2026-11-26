@@ -9,19 +9,21 @@ struct SettingsView: View {
             Tab("Agents", systemImage: "terminal") { AgentSettings() }
             Tab("Library", systemImage: "externaldrive") { LibrarySettings() }
         }
-        .frame(width: 560, height: 560)
+        .frame(width: 580, height: 640)
         .tint(Folio.rubric)
     }
 }
 
 struct AppearanceSettings: View {
     @LookSetting private var look
-    @AppStorage("world") private var worldRaw = ""
+    @AppStorage("finish") private var finishRaw = ""
+    @AppStorage("accent") private var accentRaw = ""
+    @AppStorage("libraryLayout") private var libraryRaw = ""
     @AppStorage("editorFontChoice") private var fontChoice = ""
     @AppStorage("editorSizeChoice") private var sizeChoice: Double = 0
 
     var body: some View {
-        let _ = worldRaw
+        let _ = finishRaw + accentRaw + libraryRaw
         Form {
             Section("Theme") {
                 Picker("Theme", selection: $look) {
@@ -30,10 +32,31 @@ struct AppearanceSettings: View {
                 .pickerStyle(.segmented)
                 Text("Dark is the default. ⇧⌘L switches themes.").font(.system(size: 11)).foregroundStyle(Folio.slate)
             }
-            Section("Design") {
-                HStack(alignment: .top, spacing: 12) {
-                    ForEach(World.allCases) { w in
-                        DesignCard(world: w, selected: World.current == w) { World.set(w) }
+            Section("Finish") {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(Finish.allCases) { f in
+                        ChoiceCard(title: f.rawValue, blurb: f.blurb, selected: Variant.finish == f) {
+                            Schematic(glass: f == .glass, outline: Variant.library == .outline)
+                        } action: { Variant.set(finish: f) }
+                    }
+                }
+            }
+            Section("Accent") {
+                HStack(spacing: 18) {
+                    ForEach(Accent.allCases) { a in
+                        AccentSwatch(accent: a, selected: Variant.accent == a) { Variant.set(accent: a) }
+                    }
+                    Spacer()
+                }
+            }
+            Section("Library") {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(LibraryLayout.allCases) { l in
+                        ChoiceCard(title: l.name,
+                                   blurb: l == .columns ? "Spaces and projects, then a list of prompts." : "One outline of spaces, projects and prompts. More room for the page.",
+                                   selected: Variant.library == l) {
+                            Schematic(glass: Variant.glass, outline: l == .outline)
+                        } action: { Variant.set(library: l) }
                     }
                 }
             }
@@ -53,92 +76,122 @@ struct AppearanceSettings: View {
     }
 }
 
-struct DesignCard: View {
-    let world: World
+struct ChoiceCard<Preview: View>: View {
+    let title: String
+    let blurb: String
     let selected: Bool
+    @ViewBuilder var preview: Preview
     let action: () -> Void
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 6) {
-                DesignSchematic(world: world)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                preview
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .strokeBorder(selected ? Folio.rubric : Folio.rule, lineWidth: selected ? 2 : 1))
-                Text(world.rawValue).font(.system(size: 12.5, weight: .semibold))
-                Text(world.blurb).font(.system(size: 11)).foregroundStyle(Folio.slate)
+                Text(title).font(.system(size: 12.5, weight: .semibold))
+                Text(blurb).font(.system(size: 11)).foregroundStyle(Folio.slate)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(width: 150, alignment: .leading)
+            .frame(width: 220, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 }
 
-/// A miniature of each design's layout, drawn from its dark tokens, so the choice is about structure.
-struct DesignSchematic: View {
-    let world: World
-    private var s: Style { world.style }
-    private func c(_ p: Style.Pair, _ o: Double = 1) -> Color { Color(hex: p.dark).opacity(o) }
-
+struct AccentSwatch: View {
+    let accent: Accent
+    let selected: Bool
+    let action: () -> Void
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            c(s.paperDeep)
-            switch world {
-            case .console:
-                VStack(spacing: 0) {
-                    HStack(spacing: 4) {
-                        RoundedRectangle(cornerRadius: 2).fill(c(s.ink, 0.25)).frame(height: 8)
-                        RoundedRectangle(cornerRadius: 2).fill(c(s.fill)).frame(width: 18, height: 8)
-                    }.padding(6).background(c(s.paper))
-                    HStack(spacing: 0) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(0..<6) { i in RoundedRectangle(cornerRadius: 1.5).fill(c(s.ink, i == 1 ? 0.5 : 0.18)).frame(height: 4) }
-                        }.padding(6).frame(width: 52)
-                        VStack(alignment: .leading, spacing: 4) {
-                            RoundedRectangle(cornerRadius: 1.5).fill(c(s.ink, 0.6)).frame(width: 46, height: 5)
-                            RoundedRectangle(cornerRadius: 2).fill(c(s.ink, 0.1)).frame(height: 22)
-                            RoundedRectangle(cornerRadius: 2).fill(c(s.fill)).frame(height: 7)
-                        }.padding(6).frame(maxWidth: .infinity).background(c(s.paper))
-                    }
-                }
-            case .board:
-                VStack(spacing: 0) {
-                    HStack(spacing: 4) {
-                        ForEach(0..<3) { i in RoundedRectangle(cornerRadius: 1.5).fill(c(s.ink, i == 0 ? 0.5 : 0.2)).frame(width: 16, height: 5) }
-                        Spacer()
-                        RoundedRectangle(cornerRadius: 2).fill(c(s.fill)).frame(width: 18, height: 7)
-                    }.padding(6).background(c(s.paper))
-                    HStack(alignment: .top, spacing: 5) {
-                        ForEach(0..<3) { col in
-                            VStack(spacing: 4) {
-                                ForEach(Array(0..<(3 - col % 2)), id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(c(s.raised)).overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(c(s.ink, 0.12), lineWidth: 0.5)).frame(height: 12) }
-                            }.padding(3).background(RoundedRectangle(cornerRadius: 3).fill(c(s.paper)))
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color(hex: accent.fill.dark))
+                    .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+                    .frame(width: 22, height: 22)
+                    .padding(3)
+                    .overlay(Circle().strokeBorder(selected ? Color(hex: accent.text.dark) : .clear, lineWidth: 2))
+                Text(accent.rawValue).font(.system(size: 12.5, weight: selected ? .semibold : .regular))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A miniature of the window: sidebar, list (or outline), page, inspector.
+struct Schematic: View {
+    let glass: Bool
+    let outline: Bool
+    var body: some View {
+        let ink = Color(hex: "#ECE9E1")
+        let accent = Color(hex: Variant.accent.fill.dark)
+        let gap: CGFloat = glass ? 3 : 0
+        ZStack {
+            if glass {
+                LinearGradient(colors: [Color(hex: "#3B3F46"), Color(hex: "#1D2025"), Color(hex: "#4A3A33")],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+            } else {
+                Color(hex: "#0F0E0D")
+            }
+            HStack(spacing: gap) {
+                pane(.white.opacity(glass ? 0.08 : 0), solid: "#0F0E0D") {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(0..<(outline ? 7 : 5), id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 1).fill(ink.opacity(i == 2 ? 0.55 : 0.18))
+                                .frame(width: outline && i > 1 ? 22 : 28, height: 3)
+                                .padding(.leading, outline && i > 1 ? 6 : 0)
                         }
-                    }.padding(6)
-                }
-            case .studio:
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        ForEach(0..<3) { i in Rectangle().fill(i == 0 ? c(s.paper) : .clear).frame(width: 26, height: 10)
-                            .overlay(alignment: .top) { if i == 0 { Rectangle().fill(c(s.accent)).frame(height: 1.5) } } }
-                        Spacer()
-                    }.background(c(s.paperDeep))
-                    HStack(spacing: 0) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Aa").font(.system(size: 11, design: .serif)).foregroundStyle(c(s.ink))
-                            ForEach(0..<4) { _ in RoundedRectangle(cornerRadius: 1).fill(c(s.ink, 0.2)).frame(height: 3) }
-                        }.padding(7).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(c(s.paper))
-                        VStack(alignment: .leading, spacing: 4) {
-                            RoundedRectangle(cornerRadius: 1).fill(c(s.ink, 0.15)).frame(height: 6)
-                            RoundedRectangle(cornerRadius: 1).fill(c(s.ink, 0.15)).frame(height: 6)
-                            RoundedRectangle(cornerRadius: 1.5).fill(c(s.fill)).frame(height: 6)
-                        }.padding(5).frame(width: 44)
                     }
+                }
+                .frame(width: outline ? 44 : 34)
+                if !outline {
+                    pane(.white.opacity(glass ? 0.08 : 0), solid: "#131211") {
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(0..<4, id: \.self) { i in
+                                RoundedRectangle(cornerRadius: 1).fill(ink.opacity(i == 1 ? 0.5 : 0.2)).frame(height: 3)
+                            }
+                        }
+                    }
+                    .frame(width: 40)
+                }
+                pane(.white.opacity(glass ? 0.12 : 0), solid: "#161514") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack { Spacer(); Capsule().fill(accent).frame(width: 16, height: 5) }
+                        Text("Aa").font(.system(size: 10, design: .serif)).foregroundStyle(ink)
+                        ForEach(0..<4, id: \.self) { i in
+                            RoundedRectangle(cornerRadius: 1).fill(i == 1 ? accent.opacity(0.8) : ink.opacity(0.22)).frame(width: i == 1 ? 30 : 56, height: 2.5)
+                        }
+                    }
+                }
+                pane(.white.opacity(glass ? 0.08 : 0), solid: "#0F0E0D") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2).fill(ink.opacity(0.14)).frame(height: 6)
+                        RoundedRectangle(cornerRadius: 2).fill(ink.opacity(0.14)).frame(height: 6)
+                        Capsule().fill(accent).frame(width: 18, height: 5)
+                    }
+                }
+                .frame(width: 32)
+            }
+            .padding(gap)
+        }
+        .frame(width: 220, height: 100)
+    }
+
+    private func pane<C: View>(_ glassFill: Color, solid: String, @ViewBuilder _ c: () -> C) -> some View {
+        c()
+            .padding(5)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background {
+                if glass {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous).fill(glassFill)
+                        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(.white.opacity(0.14), lineWidth: 0.5))
+                } else {
+                    Color(hex: solid).overlay(alignment: .trailing) { Rectangle().fill(.white.opacity(0.06)).frame(width: 0.5) }
                 }
             }
-        }
-        .frame(width: 150, height: 86)
     }
 }
 
